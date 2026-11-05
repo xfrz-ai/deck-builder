@@ -23,6 +23,9 @@ const PEOPLE_PHOTO_HEIGHT = 235;
 // Square 3D brand objects, exported from Figma at 1254×1254.
 export const WKND_3D_DIR = "/assets/3d-logo-wknd";
 export const WKND_3D_SOURCE_SIZE = 1254;
+// Square architecture photos used as image placeholders.
+const PLACEHOLDER_DIR = "/assets/img-placeholder";
+const PLACEHOLDER_SIZE = 1000;
 
 export interface LayoutShapeOptions {
   cornerRadius?: number;
@@ -89,6 +92,28 @@ export function createLayoutPhoto({
     src: `${PEOPLE_DIR}/Placeholder${photo === 0 ? "" : `-${photo}`}.png`,
     originalWidth: PEOPLE_PHOTO_WIDTH,
     originalHeight: PEOPLE_PHOTO_HEIGHT,
+    cornerRadius,
+    fit: "cover",
+  };
+}
+
+// A placeholder photo (e.g. "img 2.png") cropped to fill its box.
+export function createLayoutPlaceholderImage({
+  cornerRadius,
+  file,
+  ...box
+}: LayoutImageBox & { cornerRadius: number; file: string }): ImageElement {
+  return {
+    ...box,
+    type: "image",
+    rotation: 0,
+    opacity: 1,
+    locked: false,
+    visible: true,
+    // The file names contain spaces.
+    src: `${PLACEHOLDER_DIR}/${encodeURIComponent(file)}`,
+    originalWidth: PLACEHOLDER_SIZE,
+    originalHeight: PLACEHOLDER_SIZE,
     cornerRadius,
     fit: "cover",
   };

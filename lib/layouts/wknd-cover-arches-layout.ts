@@ -4,7 +4,7 @@ import {
   WKND_3D_DIR,
   WKND_3D_SOURCE_SIZE,
 } from "@/lib/layouts/layout-elements";
-import { gridHeight, gridWidth, gridX, gridY } from "@/lib/layouts/layout-grid";
+import { gridWidth, gridX, gridY } from "@/lib/layouts/layout-grid";
 import { createLayoutText } from "@/lib/layouts/layout-text";
 import type {
   ImageElement,
@@ -13,10 +13,13 @@ import type {
 } from "@/types/presentation";
 
 const BACKGROUND = "#FBB03A";
-// Each arch spans 8 columns × 8 rows; three of them fill the grid width.
+// Each arch spans 8 columns from row 4; three of them fill the grid width.
 const ARCH_WIDTH = gridWidth(8);
 const ARCH_TOP = gridY(4);
-const ARCH_HEIGHT = gridHeight(8);
+// As tall as it is wide, so the full circle forming the round top ends
+// exactly on the flat base instead of bulging below it. Ends at y 920,
+// inside the content area.
+const ARCH_HEIGHT = ARCH_WIDTH;
 const ARCH_CORNER_RADIUS = 24;
 const OBJECT_SIZE = 384;
 // Objects sit a little below the arch centre, like the brand guide.
@@ -100,13 +103,16 @@ function createArch({
       ARCH_WIDTH,
       fill,
     ),
+    // Starts one corner radius above the circle's equator so the base's
+    // rounded top corners hide behind the circle instead of notching the
+    // sides where the two shapes meet.
     createShape(
       `${id}-base`,
       "roundedRectangle",
       x,
-      ARCH_TOP + radius,
+      ARCH_TOP + radius - ARCH_CORNER_RADIUS,
       ARCH_WIDTH,
-      ARCH_HEIGHT - radius,
+      ARCH_HEIGHT - radius + ARCH_CORNER_RADIUS,
       fill,
     ),
     createObject(`${id}-object`, src, x + (ARCH_WIDTH - OBJECT_SIZE) / 2),

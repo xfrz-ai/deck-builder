@@ -48,6 +48,12 @@ function getImageEntry(src: string) {
   return entry;
 }
 
+// Starts loading `src` into the shared cache so a later render shows it at
+// once instead of flashing in.
+export function preloadImage(src: string) {
+  getImageEntry(src);
+}
+
 function subscribeToImage(src: string, listener: () => void) {
   const entry = getImageEntry(src);
   entry.listeners.add(listener);

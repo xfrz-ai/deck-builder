@@ -4,7 +4,9 @@ import type { Slide } from "@/types/presentation";
 export interface SlideLayoutDefinition {
   category:
     | "agenda"
+    | "bento"
     | "cover"
+    | "image"
     | "mockup"
     | "table"
     | "team"

@@ -5,6 +5,8 @@ import {
 import { WKND_AGENDA_CHAPTERS_LAYOUT } from "@/lib/layouts/wknd-agenda-chapters-layout";
 import { WKND_AGENDA_LAYOUT } from "@/lib/layouts/wknd-agenda-layout";
 import { WKND_AGENDA_OVERVIEW_LAYOUT } from "@/lib/layouts/wknd-agenda-overview-layout";
+import { WKND_BENTO_COLUMNS_LAYOUT } from "@/lib/layouts/wknd-bento-columns-layout";
+import { WKND_BENTO_GRID_LAYOUT } from "@/lib/layouts/wknd-bento-grid-layout";
 import { WKND_COVER_ARCHES_LAYOUT } from "@/lib/layouts/wknd-cover-arches-layout";
 import { WKND_COVER_BRAND_LAYOUT } from "@/lib/layouts/wknd-cover-brand-layout";
 import { WKND_COVER_D_LAYOUT } from "@/lib/layouts/wknd-cover-d-layout";
@@ -12,6 +14,14 @@ import { WKND_COVER_STAR_LAYOUT } from "@/lib/layouts/wknd-cover-star-layout";
 import { WKND_FULL_TEXT_LAYOUT } from "@/lib/layouts/wknd-full-text-layout";
 import { WKND_FULL_TEXT_PARAGRAPHS_LAYOUT } from "@/lib/layouts/wknd-full-text-paragraphs-layout";
 import { WKND_FULL_TEXT_STATEMENT_LAYOUT } from "@/lib/layouts/wknd-full-text-statement-layout";
+import { WKND_IMAGE_APPROACH_LAYOUT } from "@/lib/layouts/wknd-image-approach-layout";
+import { WKND_IMAGE_CHAPTER_LAYOUT } from "@/lib/layouts/wknd-image-chapter-layout";
+import { WKND_IMAGE_FIELD_NOTES_LAYOUT } from "@/lib/layouts/wknd-image-field-notes-layout";
+import { WKND_IMAGE_MATERIALS_LAYOUT } from "@/lib/layouts/wknd-image-materials-layout";
+import { WKND_IMAGE_MOODS_LAYOUT } from "@/lib/layouts/wknd-image-moods-layout";
+import { WKND_IMAGE_SPLIT_LAYOUT } from "@/lib/layouts/wknd-image-split-layout";
+import { WKND_IMAGE_TWO_STUDIES_LAYOUT } from "@/lib/layouts/wknd-image-two-studies-layout";
+import { WKND_MOCKUP_LAPTOP_CALLOUTS_LAYOUT } from "@/lib/layouts/wknd-mockup-laptop-callouts-layout";
 import { WKND_MOCKUP_LAPTOP_LAYOUT } from "@/lib/layouts/wknd-mockup-laptop-layout";
 import { WKND_MOCKUP_PHONE_LAYOUT } from "@/lib/layouts/wknd-mockup-phone-layout";
 import { WKND_TEAM_LIST_LAYOUT } from "@/lib/layouts/wknd-team-list-layout";
@@ -41,10 +51,20 @@ export const SLIDE_LAYOUTS: readonly SlideLayoutDefinition[] = [
   WKND_TIMELINE_ROADMAP_LAYOUT,
   WKND_TABLE_PACKAGES_LAYOUT,
   WKND_TABLE_SCOPE_LAYOUT,
+  WKND_IMAGE_MOODS_LAYOUT,
+  WKND_IMAGE_MATERIALS_LAYOUT,
+  WKND_IMAGE_CHAPTER_LAYOUT,
+  WKND_IMAGE_FIELD_NOTES_LAYOUT,
+  WKND_IMAGE_TWO_STUDIES_LAYOUT,
+  WKND_IMAGE_APPROACH_LAYOUT,
+  WKND_IMAGE_SPLIT_LAYOUT,
+  WKND_BENTO_COLUMNS_LAYOUT,
+  WKND_BENTO_GRID_LAYOUT,
   WKND_FULL_TEXT_LAYOUT,
   WKND_FULL_TEXT_PARAGRAPHS_LAYOUT,
   WKND_FULL_TEXT_STATEMENT_LAYOUT,
   WKND_MOCKUP_LAPTOP_LAYOUT,
+  WKND_MOCKUP_LAPTOP_CALLOUTS_LAYOUT,
   WKND_MOCKUP_PHONE_LAYOUT,
 ];
 

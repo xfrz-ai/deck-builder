@@ -30,6 +30,8 @@ const LAYOUT_FILTERS = [
   { id: "team", label: "Our Team" },
   { id: "timeline", label: "Timeline" },
   { id: "table", label: "Table" },
+  { id: "image", label: "Image + Text" },
+  { id: "bento", label: "Bento" },
   { id: "text", label: "Full Text" },
   { id: "mockup", label: "Mockup" },
   { id: "all", label: "All" },
@@ -81,12 +83,12 @@ function LayoutPreview({
   return (
     <button
       aria-label={`Add ${name}`}
-      className="group overflow-hidden rounded-2xl bg-surface-03 p-1.5 text-left transition-shadow hover:shadow-[0_0_0_1.5px_#7b7b7b_inset,0_0_0_4px_#fcfcfc_inset] focus-visible:outline-none focus-visible:shadow-[0_0_0_1.5px_#7b7b7b_inset,0_0_0_4px_#fcfcfc_inset]"
+      className="group min-w-0 overflow-hidden rounded-xl bg-surface-03 p-1 text-left transition-shadow hover:shadow-[0_0_0_1.5px_#7b7b7b_inset,0_0_0_4px_#fcfcfc_inset] focus-visible:outline-none focus-visible:shadow-[0_0_0_1.5px_#7b7b7b_inset,0_0_0_4px_#fcfcfc_inset]"
       onClick={onSelect}
       type="button"
     >
       <div
-        className="relative aspect-video overflow-hidden rounded-xl bg-surface-02"
+        className="relative aspect-video overflow-hidden rounded-lg bg-surface-02"
         ref={previewRef}
       >
         {previewWidth > 0 ? (
@@ -105,23 +107,23 @@ function LayoutPreview({
         <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-black/[0.03]" />
       </div>
 
-      <div className="flex items-center gap-3 px-1.5 pb-1.5 pt-3">
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-surface-01 text-primary shadow-[0_0_4px_0_rgba(18,18,18,0.10)]">
+      <div className="flex items-center gap-2 px-1 pb-1 pt-2">
+        <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-surface-01 text-primary shadow-[0_0_4px_0_rgba(18,18,18,0.10)]">
           {icon === "blank" ? (
-            <Plus aria-hidden="true" className="size-4" strokeWidth={2} />
+            <Plus aria-hidden="true" className="size-3.5" strokeWidth={2} />
           ) : (
             <LayoutTemplate
               aria-hidden="true"
-              className="size-4"
+              className="size-3.5"
               strokeWidth={1.9}
             />
           )}
         </span>
         <span className="min-w-0">
-          <span className="block truncate text-[13px] font-semibold text-primary">
+          <span className="block truncate text-xs font-semibold text-primary">
             {name}
           </span>
-          <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+          <span className="block truncate text-[11px] text-muted-foreground">
             {description}
           </span>
         </span>
@@ -249,7 +251,7 @@ export function SlideLayoutPicker({
             ))}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-4 gap-2.5">
             {showBlank ? (
               <LayoutPreview
                 description="A clean 16:9 canvas"
