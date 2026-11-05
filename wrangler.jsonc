@@ -1,0 +1,11 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "deck-builder",
+  "compatibility_date": "2026-11-01",
+  // Static-only Worker: serves the Next.js static export in ./out
+  "assets": {
+    "directory": "./out",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page"
+  }
+}
