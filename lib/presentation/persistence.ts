@@ -1,6 +1,12 @@
 import type { StateStorage } from "zustand/middleware";
 
 import { notifyEditor } from "@/lib/editor/notifications";
+import { createFrameElements } from "@/lib/backgrounds/background-themes";
+import { normalizeAgendaPresentation } from "@/lib/agenda/agenda-ownership";
+import { normalizeTeamPresentation } from "@/lib/team/team-ownership";
+import { normalizeTimelinePresentation } from "@/lib/timeline/timeline-ownership";
+import { normalizeTablePresentation } from "@/lib/table/table-migration";
+import { reflowTextBlockPresentation } from "@/lib/text/text-block";
 import { isPresentation } from "@/lib/presentation/validation";
 import type { Presentation } from "@/types/presentation";
 
@@ -31,6 +37,10 @@ function migrateEditableTemplateAssets(
 ): Presentation {
   let didChange = false;
   const slides = presentation.slides.map((slide) => {
+    if (slide.elements.length === 0) {
+      didChange = true;
+      return { ...slide, elements: createFrameElements(slide.id, slide.darkMode ? "light" : "dark") };
+    }
     let didChangeSlide = false;
     const elements = slide.elements.map((element) => {
       if (
@@ -68,7 +78,7 @@ export function normalizePersistedEditorState(
     };
   }
 
-  const presentation = migrateEditableTemplateAssets(value.presentation);
+  const presentation = migrateEditableTemplateAssets(reflowTextBlockPresentation(normalizeTablePresentation(normalizeTimelinePresentation(normalizeTeamPresentation(normalizeAgendaPresentation(value.presentation))))));
   const activeSlideId =
     "activeSlideId" in value && typeof value.activeSlideId === "string"
       ? value.activeSlideId

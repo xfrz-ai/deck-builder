@@ -25,6 +25,7 @@ export function measureTextWidth(
   fontFamily: TextElement["fontFamily"],
   fontSize: number,
   fontWeight = 400,
+  italic = false,
 ) {
   const context = getMeasureContext();
 
@@ -32,6 +33,6 @@ export function measureTextWidth(
     return null;
   }
 
-  context.font = getCanvasFont(fontFamily, fontSize, fontWeight);
+  context.font = `${italic ? "italic " : ""}${getCanvasFont(fontFamily, fontSize, fontWeight)}`;
   return context.measureText(text).width;
 }

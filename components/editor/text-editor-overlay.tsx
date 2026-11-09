@@ -17,6 +17,8 @@ interface TextEditorOverlayProps {
   onToggleItalic: () => void;
   scale: number;
   selectAllOnFocus?: boolean;
+  autoSave?: boolean;
+  onNavigate?: (direction: -1 | 1) => void;
 }
 
 export function TextEditorOverlay({
@@ -27,6 +29,8 @@ export function TextEditorOverlay({
   onToggleItalic,
   scale,
   selectAllOnFocus = false,
+  autoSave = true,
+  onNavigate,
 }: TextEditorOverlayProps) {
   const [draftText, setDraftText] = useState(element.text);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -44,6 +48,7 @@ export function TextEditorOverlay({
   }, [onCommit]);
 
   useEffect(() => {
+    if (!autoSave) return;
     if (
       draftText === originalTextRef.current &&
       latestHeightRef.current === originalHeightRef.current
@@ -61,7 +66,7 @@ export function TextEditorOverlay({
     }, 300);
 
     return () => window.clearTimeout(timer);
-  }, [draftText]);
+  }, [autoSave, draftText]);
 
   useEffect(() => {
     const commitBeforeUnload = () => {
@@ -179,6 +184,7 @@ export function TextEditorOverlay({
         aria-label="Edit text"
         data-text-editor="true"
         onBlur={() => {
+          if (finalizeStateRef.current !== "active") return;
           commit();
           onCancel();
         }}
@@ -193,6 +199,13 @@ export function TextEditorOverlay({
           setDraftText(event.target.value);
         }}
         onKeyDown={(event) => {
+          if (event.key === "Tab" && onNavigate) {
+            event.preventDefault();
+            event.stopPropagation();
+            commit();
+            onNavigate(event.shiftKey ? -1 : 1);
+            return;
+          }
           if (event.key === "Escape") {
             event.preventDefault();
             event.stopPropagation();

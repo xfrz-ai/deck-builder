@@ -1,11 +1,15 @@
 "use client";
 
 import type { KonvaEventObject, Node } from "konva/lib/Node";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { Layer, Line, Rect, Stage } from "react-konva";
 
 import { ElementRenderer } from "@/components/editor/element-renderer";
 import { SelectionTransformer } from "@/components/editor/selection-transformer";
+import { getAgendaGraphicBounds } from "@/lib/agenda/agenda-ownership";
+import { getTeamGraphicBounds } from "@/lib/team/team-ownership";
+import { getTimelineGraphicBounds } from "@/lib/timeline/timeline-ownership";
+import { getTableBounds, getTableCellAtPoint } from "@/lib/table/table-elements";
 import {
   getElementGuides,
   getLayoutGuides,
@@ -36,6 +40,13 @@ export interface SlideRendererProps {
   interactive?: boolean;
   editingElementId?: string | null;
   onCanvasPointerDown?: () => void;
+  onAgendaEdit?: () => void;
+  onAgendaSelect?: () => void;
+  onTeamEdit?: () => void;
+  onTeamSelect?: () => void;
+  onTableSelect?: () => void;
+  onTimelineEdit?: (timelineId: string) => void;
+  onTimelineSelect?: (timelineId: string) => void;
   onElementsDragEnd?: (
     positions: readonly { elementId: string; x: number; y: number }[],
   ) => void;
@@ -95,6 +106,13 @@ export default function SlideRenderer({
   interactive = false,
   editingElementId,
   onCanvasPointerDown,
+  onAgendaEdit,
+  onAgendaSelect,
+  onTeamEdit,
+  onTeamSelect,
+  onTableSelect,
+  onTimelineEdit,
+  onTimelineSelect,
   onElementsDragEnd,
   onElementsSelect,
   onElementSelect,
@@ -198,6 +216,34 @@ export default function SlideRenderer({
       return element && element.visible !== false && !element.locked;
     },
   );
+  const textBlockRegions = (slide.textBlocks ?? []).flatMap((block) => {
+    const parts = slide.elements.filter((element) => element.textBlockId === block.id && element.visible !== false);
+    if (!parts.length) return [];
+    return [{
+      parts, key: `text-block:${block.id}`,
+      bounds: { x: block.x, y: block.y, width: block.width, height: Math.max(...parts.map((part) => part.y + part.height)) - block.y },
+    }];
+  });
+  const tableBounds = getTableBounds(slide);
+  const tableSelected = Boolean(slide.table && slide.elements.some((element) => element.tableId === slide.table?.id && selectedElementIds.includes(element.id)));
+  const editingTableCell = slide.elements.find((element) => element.id === editingElementId && element.tableCell);
+  const agendaBounds = getAgendaGraphicBounds(slide);
+  const agendaSelected = Boolean(slide.agenda && slide.elements.some((element) =>
+    element.agendaId === slide.agenda?.id && selectedElementIds.includes(element.id),
+  ));
+  const teamBounds = getTeamGraphicBounds(slide);
+  const teamSelected = Boolean(slide.team && slide.elements.some((element) =>
+    element.teamId === slide.team?.id && selectedElementIds.includes(element.id),
+  ));
+
+  const timelineRegions = (slide.timelines ?? []).flatMap((timeline) => {
+    const bounds = getTimelineGraphicBounds(slide, timeline.id);
+    return bounds ? [{
+      id: timeline.id,
+      bounds,
+      selected: slide.elements.some((element) => element.timelineId === timeline.id && selectedElementIds.includes(element.id)),
+    }] : [];
+  }).reverse();
 
   const getLogicalPointerPosition = useCallback(
     (event: KonvaEventObject<MouseEvent | TouchEvent>) => {
@@ -210,10 +256,93 @@ export default function SlideRenderer({
     [scale],
   );
 
+  const selectGraphicAtPointer = useCallback(
+    (event: KonvaEventObject<MouseEvent | TouchEvent>) => {
+      const pointer = getLogicalPointerPosition(event);
+      if (pointer && tableBounds && onTableSelect &&
+        pointer.x >= tableBounds.x && pointer.x <= tableBounds.x + tableBounds.width &&
+        pointer.y >= tableBounds.y && pointer.y <= tableBounds.y + tableBounds.height
+      ) {
+        onTableSelect();
+        return true;
+      }
+      const timeline = pointer ? timelineRegions.find(({ bounds }) =>
+        pointer.x >= bounds.x && pointer.x <= bounds.x + bounds.width &&
+        pointer.y >= bounds.y && pointer.y <= bounds.y + bounds.height,
+      ) : undefined;
+      if (timeline && onTimelineSelect) {
+        onTimelineSelect(timeline.id);
+        return true;
+      }
+      if (pointer && agendaBounds && onAgendaSelect &&
+        pointer.x >= agendaBounds.x && pointer.x <= agendaBounds.x + agendaBounds.width &&
+        pointer.y >= agendaBounds.y && pointer.y <= agendaBounds.y + agendaBounds.height
+      ) {
+        onAgendaSelect();
+        return true;
+      }
+      if (pointer && teamBounds && onTeamSelect &&
+        pointer.x >= teamBounds.x && pointer.x <= teamBounds.x + teamBounds.width &&
+        pointer.y >= teamBounds.y && pointer.y <= teamBounds.y + teamBounds.height
+      ) {
+        onTeamSelect();
+        return true;
+      }
+      return false;
+    },
+    [agendaBounds, getLogicalPointerPosition, onAgendaSelect, onTeamSelect, onTableSelect, onTimelineSelect, tableBounds, teamBounds, timelineRegions],
+  );
+
+  const handleCanvasTap = useCallback(
+    (event: KonvaEventObject<MouseEvent | TouchEvent>) => {
+      if (!selectGraphicAtPointer(event)) onCanvasPointerDown?.();
+    },
+    [onCanvasPointerDown, selectGraphicAtPointer],
+  );
+
+  const handleManagedEdit = useCallback(
+    (event: KonvaEventObject<MouseEvent | TouchEvent>) => {
+      const pointer = getLogicalPointerPosition(event);
+      if (pointer && tableBounds &&
+        pointer.x >= tableBounds.x && pointer.x <= tableBounds.x + tableBounds.width &&
+        pointer.y >= tableBounds.y && pointer.y <= tableBounds.y + tableBounds.height
+      ) {
+        const cell = getTableCellAtPoint(slide, pointer);
+        if (cell) onElementEdit?.(cell.id);
+        else onTableSelect?.();
+        return;
+      }
+      const timeline = pointer ? timelineRegions.find(({ bounds }) =>
+        pointer.x >= bounds.x && pointer.x <= bounds.x + bounds.width &&
+        pointer.y >= bounds.y && pointer.y <= bounds.y + bounds.height,
+      ) : undefined;
+      if (timeline) {
+        onTimelineEdit?.(timeline.id);
+      } else if (pointer && agendaBounds &&
+        pointer.x >= agendaBounds.x && pointer.x <= agendaBounds.x + agendaBounds.width &&
+        pointer.y >= agendaBounds.y && pointer.y <= agendaBounds.y + agendaBounds.height
+      ) {
+        onAgendaEdit?.();
+      } else if (pointer && teamBounds &&
+        pointer.x >= teamBounds.x && pointer.x <= teamBounds.x + teamBounds.width &&
+        pointer.y >= teamBounds.y && pointer.y <= teamBounds.y + teamBounds.height
+      ) {
+        onTeamEdit?.();
+      }
+    },
+    [agendaBounds, getLogicalPointerPosition, onAgendaEdit, onTeamEdit, onElementEdit, onTableSelect, onTimelineEdit, slide, tableBounds, teamBounds, timelineRegions],
+  );
+
   const handleCanvasMouseDown = useCallback(
     (event: KonvaEventObject<MouseEvent>) => {
       const pointer = getLogicalPointerPosition(event);
 
+      if (selectGraphicAtPointer(event)) {
+        selectionStartRef.current = null;
+        selectionBoxRef.current = null;
+        setSelectionBox(null);
+        return;
+      }
       onCanvasPointerDown?.();
       if (!pointer) {
         return;
@@ -224,13 +353,29 @@ export default function SlideRenderer({
       selectionBoxRef.current = initialBox;
       setSelectionBox(initialBox);
     },
-    [getLogicalPointerPosition, onCanvasPointerDown],
+    [getLogicalPointerPosition, onCanvasPointerDown, selectGraphicAtPointer],
   );
 
   const handleCanvasMouseMove = useCallback(
     (event: KonvaEventObject<MouseEvent>) => {
       const start = selectionStartRef.current;
       const pointer = getLogicalPointerPosition(event);
+
+      if (pointer && event.target.hasName("slide-background")) {
+        const overAgenda = agendaBounds &&
+          pointer.x >= agendaBounds.x && pointer.x <= agendaBounds.x + agendaBounds.width &&
+          pointer.y >= agendaBounds.y && pointer.y <= agendaBounds.y + agendaBounds.height;
+        const overTeam = teamBounds &&
+          pointer.x >= teamBounds.x && pointer.x <= teamBounds.x + teamBounds.width &&
+          pointer.y >= teamBounds.y && pointer.y <= teamBounds.y + teamBounds.height;
+        const overTimeline = timelineRegions.some(({ bounds }) =>
+          pointer.x >= bounds.x && pointer.x <= bounds.x + bounds.width &&
+          pointer.y >= bounds.y && pointer.y <= bounds.y + bounds.height,
+        );
+        const overTable = tableBounds && pointer.x >= tableBounds.x && pointer.x <= tableBounds.x + tableBounds.width && pointer.y >= tableBounds.y && pointer.y <= tableBounds.y + tableBounds.height;
+        const container = event.target.getStage()?.container();
+        if (container) container.style.cursor = overAgenda || overTeam || overTimeline || overTable ? "pointer" : "default";
+      }
 
       if (!start || !pointer) {
         return;
@@ -240,7 +385,7 @@ export default function SlideRenderer({
       selectionBoxRef.current = nextBox;
       setSelectionBox(nextBox);
     },
-    [getLogicalPointerPosition],
+    [agendaBounds, getLogicalPointerPosition, tableBounds, teamBounds, timelineRegions],
   );
 
   const handleCanvasMouseUp = useCallback(() => {
@@ -281,9 +426,12 @@ export default function SlideRenderer({
         return;
       }
 
-      const dragIds = selectedElementIds.includes(elementId)
-        ? transformableSelectedElementIds
-        : [elementId];
+      const draggedElement = slide.elements.find((element) => element.id === elementId);
+      const blockId = draggedElement?.textBlockId ?? slide.textBlocks?.find((block) => `text-block:${block.id}` === elementId)?.id;
+      const blockIds = blockId ? slide.elements.filter((element) => element.textBlockId === blockId).map((element) => element.id) : [];
+      const alreadySelected = selectedElementIds.includes(elementId) || blockIds.some((id) => selectedElementIds.includes(id));
+      const movableIds = selectedElementIds.filter((id) => slide.elements.some((element) => element.id === id && !element.locked && element.visible !== false));
+      const dragIds = alreadySelected ? movableIds : blockId ? blockIds : [elementId];
       const positions = new Map<string, Point>();
 
       dragIds.forEach((id) => {
@@ -297,6 +445,16 @@ export default function SlideRenderer({
           });
         }
       });
+
+      const movingBlocks = new Set(dragIds.flatMap((id) => {
+        const element = slide.elements.find((element) => element.id === id);
+        return element?.textBlockId ? [element.textBlockId] : [];
+      }));
+      for (const id of movingBlocks) {
+        const key = `text-block:${id}`;
+        const proxy = key === elementId ? node : elementNodesRef.current.get(key);
+        if (proxy) positions.set(key, { x: proxy.x(), y: proxy.y() });
+      }
 
       const draggedIds = new Set(positions.keys());
 
@@ -316,7 +474,8 @@ export default function SlideRenderer({
       getNodeRect,
       getSnapGuides,
       selectedElementIds,
-      transformableSelectedElementIds,
+      slide.elements,
+      slide.textBlocks,
     ],
   );
 
@@ -422,19 +581,57 @@ export default function SlideRenderer({
           fill={slide.background}
           height={logicalHeight}
           listening={interactive}
-          onContextMenu={interactive ? onCanvasPointerDown : undefined}
+          name="slide-background"
+          onContextMenu={interactive ? handleCanvasTap : undefined}
+          onDblClick={interactive ? handleManagedEdit : undefined}
+          onDblTap={interactive ? handleManagedEdit : undefined}
           onMouseDown={interactive ? handleCanvasMouseDown : undefined}
-          onTap={interactive ? onCanvasPointerDown : undefined}
+          onTap={interactive ? handleCanvasTap : undefined}
           width={logicalWidth}
           x={0}
           y={0}
         />
-        {slide.elements.map((element) => (
+        {slide.elements.map((element) => {
+          const region = textBlockRegions.find((region) => region.parts[0].id === element.id);
+          const selectBlock = (event: KonvaEventObject<MouseEvent | TouchEvent>) => {
+            event.cancelBubble = true;
+            onElementSelect?.(element.id, "shiftKey" in event.evt && event.evt.shiftKey);
+          };
+          const editBlock = (event: KonvaEventObject<MouseEvent | TouchEvent>) => {
+            event.cancelBubble = true;
+            const point = getLogicalPointerPosition(event);
+            const closest = region && point ? [...region.parts].sort((a, b) => {
+              const distance = (part: typeof a) => Math.hypot(Math.max(part.x - point.x, 0, point.x - part.x - part.width), Math.max(part.y - point.y, 0, point.y - part.y - part.height));
+              return distance(a) - distance(b);
+            })[0] : element;
+            if (closest) onElementEdit?.(closest.id);
+          };
+          return (
+          <Fragment key={element.id}>
+          {interactive && region ? (
+            <Rect
+              ref={(node) => registerElementNode(region.key, node)}
+              x={region.bounds.x} y={region.bounds.y} width={region.bounds.width} height={region.bounds.height}
+              fill="transparent" strokeWidth={0}
+              draggable
+              onMouseDown={selectBlock} onTap={selectBlock} onContextMenu={selectBlock}
+              onDblClick={editBlock} onDblTap={editBlock}
+              onMouseEnter={(event) => { const stage = event.target.getStage(); if (stage) stage.container().style.cursor = "move"; }}
+              onMouseLeave={(event) => { const stage = event.target.getStage(); if (stage) stage.container().style.cursor = "default"; }}
+              onDragStart={(event) => {
+                event.cancelBubble = true;
+                // Selection already happens on pointer down; keep it during a drag.
+                handleElementDragStart(region.key, event.target);
+                const stage = event.target.getStage(); if (stage) stage.container().style.cursor = "grabbing";
+              }}
+              onDragMove={(event) => handleElementDragMove(region.key, event.target)}
+              onDragEnd={(event) => { handleElementDragEnd(region.key, { x: event.target.x(), y: event.target.y() }); const stage = event.target.getStage(); if (stage) stage.container().style.cursor = "move"; }}
+            />
+          ) : null}
           <ElementRenderer
             element={element}
             interactive={interactive}
             isEditing={editingElementId === element.id}
-            key={element.id}
             onDragEnd={(position) =>
               handleElementDragEnd(element.id, position)
             }
@@ -450,7 +647,7 @@ export default function SlideRenderer({
               onElementSelect?.(element.id, additive)
             }
             onTransformEnd={
-              selectedElementIds.length === 1
+              selectedElementIds.length === 1 && !element.textBlockId
                 ? (node) => {
                     const transform = normalizeTransform(node);
 
@@ -463,7 +660,9 @@ export default function SlideRenderer({
                 : undefined
             }
           />
-        ))}
+          </Fragment>
+          );
+        })}
         {interactive && showLayoutGrid ? (
           <>
             {Array.from({ length: LAYOUT_GRID.columns }, (_, index) => (
@@ -525,6 +724,49 @@ export default function SlideRenderer({
             ))}
           </>
         ) : null}
+        {interactive && tableSelected && tableBounds ? (
+          <Rect listening={false} stroke="#3582FF" strokeWidth={1.5 / scale} cornerRadius={4 / scale} x={tableBounds.x - 4 / scale} y={tableBounds.y - 4 / scale} width={tableBounds.width + 8 / scale} height={tableBounds.height + 8 / scale} />
+        ) : null}
+        {interactive && editingTableCell ? (
+          <Rect listening={false} stroke="#3582FF" strokeWidth={1 / scale} x={editingTableCell.x} y={editingTableCell.y} width={editingTableCell.width} height={editingTableCell.height} />
+        ) : null}
+        {interactive && agendaSelected && agendaBounds ? (
+          <Rect
+            cornerRadius={4 / scale}
+            height={agendaBounds.height + 8 / scale}
+            listening={false}
+            stroke="#3582FF"
+            strokeWidth={1.5 / scale}
+            width={agendaBounds.width + 8 / scale}
+            x={agendaBounds.x - 4 / scale}
+            y={agendaBounds.y - 4 / scale}
+          />
+        ) : null}
+        {interactive ? timelineRegions.filter((region) => region.selected).map(({ id, bounds }) => (
+          <Rect
+            cornerRadius={4 / scale}
+            height={bounds.height + 8 / scale}
+            key={id}
+            listening={false}
+            stroke="#3582FF"
+            strokeWidth={1.5 / scale}
+            width={bounds.width + 8 / scale}
+            x={bounds.x - 4 / scale}
+            y={bounds.y - 4 / scale}
+          />
+        )) : null}
+        {interactive && teamSelected && teamBounds ? (
+          <Rect
+            cornerRadius={4 / scale}
+            height={teamBounds.height + 8 / scale}
+            listening={false}
+            stroke="#3582FF"
+            strokeWidth={1.5 / scale}
+            width={teamBounds.width + 8 / scale}
+            x={teamBounds.x - 4 / scale}
+            y={teamBounds.y - 4 / scale}
+          />
+        ) : null}
         {interactive && selectionBox ? (
           <Rect
             dash={[6 / scale, 4 / scale]}
@@ -540,6 +782,7 @@ export default function SlideRenderer({
         ) : null}
         {interactive && transformableSelectedElementIds.length > 0 ? (
           <SelectionTransformer
+            allowResize={!slide.elements.some((element) => element.textBlockId && selectedElementIds.includes(element.id))}
             getElementNode={getElementNode}
             getSnapGuides={() =>
               getSnapGuides(new Set(transformableSelectedElementIds))

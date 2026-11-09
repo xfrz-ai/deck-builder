@@ -43,6 +43,11 @@ export function applyDarkModeToSlide(slide: Slide, darkMode: boolean): Slide {
   return {
     ...slide,
     darkMode,
+    textBlocks: slide.textBlocks?.map((block) => ({
+      ...block,
+      title: { ...block.title, color: swapColor(block.title.color, darkMode) },
+      ...(block.body ? { body: { ...block.body, color: swapColor(block.body.color, darkMode) } } : {}),
+    })),
     elements: slide.elements.map((element) =>
       applyDarkModeToElement(element, darkMode),
     ),

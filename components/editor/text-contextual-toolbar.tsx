@@ -23,7 +23,7 @@ export function TextContextualToolbar() {
     (item) => item.id === selectedElementId,
   );
 
-  if (!activeSlide || element?.type !== "text") {
+  if (!activeSlide || element?.type !== "text" || element.agendaId || element.teamId || element.timelineId || element.tableId) {
     return null;
   }
 

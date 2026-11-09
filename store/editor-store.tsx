@@ -12,6 +12,45 @@ import { createStore } from "zustand/vanilla";
 import { createJSONStorage, persist } from "zustand/middleware";
 
 import {
+  createAgendaSlide,
+  getAgendaErrors,
+  type MeasureAgendaText,
+} from "@/lib/agenda/agenda-elements";
+import { detachAgendaStaticElements, getAgendaGraphicSelectionId, normalizeAgendaPresentation } from "@/lib/agenda/agenda-ownership";
+import {
+  cloneAgenda,
+  isAgendaData,
+} from "@/lib/agenda/agenda-model";
+import { createUniqueId } from "@/lib/id";
+import type { AgendaData, AgendaEditorSession } from "@/types/agenda";
+import {
+  createTeamSlide,
+  getTeamErrors,
+  type MeasureTeamText,
+} from "@/lib/team/team-elements";
+import {
+  cloneTeam,
+  isTeamData,
+} from "@/lib/team/team-model";
+import { detachTeamStaticElements, getTeamGraphicSelectionId, normalizeTeamPresentation } from "@/lib/team/team-ownership";
+import type { TeamData, TeamEditorSession } from "@/types/team";
+import {
+  createDynamicTimelineSlide,
+  getDynamicTimelineErrors,
+  type MeasureTimelineText,
+} from "@/lib/timeline/timeline-component-elements";
+import { detachTimelineStaticElements, getTimelineGraphicSelectionId, normalizeTimelinePresentation } from "@/lib/timeline/timeline-ownership";
+import { todayDateInput } from "@/lib/timeline/timeline-dates";
+import { cloneTimeline, createDefaultTimeline, isTimelineData } from "@/lib/timeline/timeline-model";
+import type { TimelineData, TimelineEditorSession } from "@/types/timeline";
+import { getTableCellOrder, getTableSelectionId, updateTableSlide } from "@/lib/table/table-elements";
+import { getTableCellText, isTableData, resizeTable, setTableCellText } from "@/lib/table/table-model";
+import { normalizeTablePresentation } from "@/lib/table/table-migration";
+import { cloneTextBlock, createTextBlock, isTextBlockData, reflowTextBlockPresentation, textBlocksFromElements, updateTextBlockLayout, updateTextBlockPart, upsertTextBlock } from "@/lib/text/text-block";
+import type { TextBlockLayoutUpdates, TextBlockTemplate } from "@/types/text-block";
+
+
+import {
   applyBackgroundThemeToSlide,
   type BackgroundThemeId,
 } from "@/lib/backgrounds/background-themes";
@@ -62,6 +101,9 @@ interface EditorDocumentState {
 }
 
 interface EditorViewState {
+  agendaEditor: AgendaEditorSession | null;
+  teamEditor: TeamEditorSession | null;
+  timelineEditor: TimelineEditorSession | null;
   activeSlideId: string;
   editingTextId: string | null;
   editingTextSelectAll: boolean;
@@ -83,6 +125,28 @@ interface EditorHistoryState {
 }
 
 interface EditorActions {
+  insertTextBlock: (slideId: string, template: TextBlockTemplate) => void;
+  updateTextBlockLayout: (slideId: string, blockId: string, updates: TextBlockLayoutUpdates) => void;
+  reflowTextBlocks: () => void;
+  selectAgendaGraphic: (slideId: string) => void;
+  openAgendaEditor: (slideId: string) => void;
+  closeAgendaEditor: () => void;
+  saveAgenda: (data: AgendaData, measure: MeasureAgendaText) => void;
+  selectTeamGraphic: (slideId: string) => void;
+  openTeamEditor: (slideId: string) => void;
+  closeTeamEditor: () => void;
+  saveTeam: (data: TeamData, measure: MeasureTeamText) => void;
+  beginInsertTimeline: (slideId: string) => void;
+  selectTimelineGraphic: (slideId: string, timelineId: string) => void;
+  openTimelineEditor: (slideId: string, timelineId: string) => void;
+  closeTimelineEditor: () => void;
+  saveTimeline: (data: TimelineData, measure: MeasureTimelineText) => void;
+  removeTimeline: (slideId: string, timelineId: string) => void;
+  selectTableGraphic: (slideId: string) => void;
+  resizeSlideTable: (slideId: string, rows: number, columns: number) => void;
+  setTableHighlight: (slideId: string, columnId: string | undefined) => void;
+  updateTableCellText: (slideId: string, elementId: string, text: string) => void;
+  navigateTableCell: (direction: -1 | 1) => void;
   addElement: (slideId: string, element: SlideElement) => void;
   addElements: (slideId: string, elements: readonly SlideElement[]) => void;
   addLayoutSlide: (layoutId: SlideLayoutId) => void;
@@ -139,6 +203,43 @@ interface ElementUpdate {
   updates: ElementUpdates;
 }
 
+function expandTextBlockSelection(slide: Slide, ids: readonly string[]) {
+  const requested = new Set(ids);
+  const blockIds = new Set(slide.elements.flatMap((element) => requested.has(element.id) && element.textBlockId ? [element.textBlockId] : []));
+  return slide.elements.filter((element) => requested.has(element.id) || (element.textBlockId && blockIds.has(element.textBlockId))).map((element) => element.id);
+}
+
+function applySlideElementUpdates(slide: Slide, updates: readonly ElementUpdate[]): Slide {
+  let next = slide;
+  for (const block of slide.textBlocks ?? []) {
+    let data = block;
+    let translated = false;
+    for (const entry of updates) {
+      const element = slide.elements.find((element) => element.id === entry.elementId && element.textBlockId === block.id);
+      if (element?.type !== "text" || !element.textBlockPart) continue;
+      const value = entry.updates;
+      if (!translated && ((typeof value.x === "number" && Number.isFinite(value.x)) || (typeof value.y === "number" && Number.isFinite(value.y)))) {
+        data = updateTextBlockLayout(data, {
+          x: block.x + (typeof value.x === "number" ? value.x - element.x : 0),
+          y: block.y + (typeof value.y === "number" ? value.y - element.y : 0),
+        });
+        translated = true;
+      }
+      data = updateTextBlockPart(data, element.textBlockPart, value as Partial<TextElement>);
+    }
+    if (JSON.stringify(data) !== JSON.stringify(block) && isTextBlockData(data)) next = upsertTextBlock(next, data);
+  }
+  const updateMap = new Map(updates.map((entry) => [entry.elementId, entry.updates]));
+  let changed = false;
+  const elements = next.elements.map((element) => {
+    const value = updateMap.get(element.id);
+    if (!value || element.textBlockId || element.agendaId || element.teamId || element.timelineId || element.tableId) return element;
+    if (!Object.entries(value).some(([key, value]) => element[key as keyof SlideElement] !== value)) return element;
+    changed = true; return { ...element, ...value } as SlideElement;
+  });
+  return changed ? { ...next, elements } : next;
+}
+
 export type EditorStore = EditorDocumentState &
   EditorViewState &
   EditorHistoryState &
@@ -172,6 +273,26 @@ function withDocumentHistory(
   };
 }
 
+function deleteSlideElements(state: EditorStore, slideId: string, ids: readonly string[]) {
+  const slide = state.presentation.slides.find((slide) => slide.id === slideId);
+  if (!slide) return state;
+  const requested = new Set(expandTextBlockSelection(slide, ids));
+  const elements = slide.elements.filter((element) => !requested.has(element.id) || Boolean(element.agendaId || element.teamId || element.timelineId || element.tableId));
+  if (elements.length === slide.elements.length) return state;
+  const next: Slide = {
+    ...slide, elements: removeOrphanedCardParts(elements),
+    textBlocks: slide.textBlocks?.filter((block) => elements.some((element) => element.textBlockId === block.id)),
+  };
+  const deletedIds = new Set(slide.elements.filter((element) => !elements.includes(element)).map((element) => element.id));
+  const editingDeleted = Boolean(state.editingTextId && deletedIds.has(state.editingTextId));
+  return withDocumentHistory(state, {
+    presentation: { ...state.presentation, slides: state.presentation.slides.map((item) => item.id === slideId ? next : item) },
+    selectedElementIds: state.selectedElementIds.filter((id) => !deletedIds.has(id)),
+    editingTextId: editingDeleted ? null : state.editingTextId,
+    editingTextSelectAll: editingDeleted ? false : state.editingTextSelectAll,
+  });
+}
+
 export const selectActiveSlide = (state: EditorStore) =>
   state.presentation.slides.find(
     (slide) => slide.id === state.activeSlideId,
@@ -180,10 +301,14 @@ export const selectActiveSlide = (state: EditorStore) =>
 export function createEditorStore(
   initialPresentation = createDefaultPresentation(),
 ) {
+  initialPresentation = reflowTextBlockPresentation(normalizeTablePresentation(normalizeTimelinePresentation(normalizeTeamPresentation(normalizeAgendaPresentation(initialPresentation)))));
   return createStore<EditorStore>()(
     persist(
       (set) => ({
         presentation: initialPresentation,
+        agendaEditor: null,
+        teamEditor: null,
+        timelineEditor: null,
         activeSlideId: initialPresentation.slides[0]?.id ?? "",
         editingTextId: null,
         editingTextSelectAll: false,
@@ -193,6 +318,291 @@ export function createEditorStore(
         showLayoutGrid: false,
         undoStack: [],
         redoStack: [],
+        insertTextBlock: (slideId, template) =>
+          set((state) => {
+            const previous = state.presentation.slides.find((slide) => slide.id === slideId);
+            if (!previous) return state;
+            const data = createTextBlock(template, Boolean(previous.darkMode));
+            const offset = Math.min((previous.textBlocks?.length ?? 0) * 24, 144);
+            data.x += offset; data.y += offset;
+            const slide = upsertTextBlock(previous, data);
+            return withDocumentHistory(state, {
+              presentation: { ...state.presentation, slides: state.presentation.slides.map((item) => item.id === slideId ? slide : item) },
+              selectedElementIds: slide.elements.filter((element) => element.textBlockId === data.id).map((element) => element.id),
+              editingTextId: null, editingTextSelectAll: false,
+            });
+          }),
+        updateTextBlockLayout: (slideId, blockId, updates) =>
+          set((state) => {
+            const previous = state.presentation.slides.find((slide) => slide.id === slideId);
+            const old = previous?.textBlocks?.find((block) => block.id === blockId);
+            if (!previous || !old) return state;
+            const data = updateTextBlockLayout(old, updates);
+            if (!isTextBlockData(data) || JSON.stringify(data) === JSON.stringify(old)) return state;
+            const slide = upsertTextBlock(previous, data);
+            return withDocumentHistory(state, {
+              presentation: { ...state.presentation, slides: state.presentation.slides.map((item) => item.id === slideId ? slide : item) },
+              editingTextId: null, editingTextSelectAll: false,
+            });
+          }),
+        reflowTextBlocks: () => set((state) => {
+          const presentation = reflowTextBlockPresentation(state.presentation);
+          return presentation === state.presentation ? state : { presentation };
+        }),
+        selectTableGraphic: (slideId) =>
+          set((state) => {
+            const slide = state.presentation.slides.find((slide) => slide.id === slideId);
+            const id = slide ? getTableSelectionId(slide) : undefined;
+            return slideId === state.activeSlideId && id ? { editingTextId: null, editingTextSelectAll: false, selectedElementIds: [id] } : state;
+          }),
+        resizeSlideTable: (slideId, rows, columns) =>
+          set((state) => {
+            const previous = state.presentation.slides.find((slide) => slide.id === slideId);
+            if (!previous?.table || !Number.isInteger(rows) || !Number.isInteger(columns)) return state;
+            const table = resizeTable(previous.table, rows, columns);
+            if (!isTableData(table) || (table.rowCount === previous.table.rowCount && table.columnCount === previous.table.columnCount)) return state;
+            const slide = updateTableSlide(previous, table);
+            const id = getTableSelectionId(slide);
+            return withDocumentHistory(state, {
+              presentation: { ...state.presentation, slides: state.presentation.slides.map((item) => item.id === slideId ? slide : item) },
+              editingTextId: null, editingTextSelectAll: false, selectedElementIds: id ? [id] : [],
+            });
+          }),
+        setTableHighlight: (slideId, columnId) =>
+          set((state) => {
+            const previous = state.presentation.slides.find((slide) => slide.id === slideId);
+            if (!previous?.table || previous.table.variant !== "packages" || previous.table.highlightedColumnId === columnId ||
+              (columnId && !previous.table.columns.slice(1, previous.table.columnCount).some((column) => column.id === columnId))) return state;
+            const slide = updateTableSlide(previous, { ...previous.table, highlightedColumnId: columnId });
+            const id = getTableSelectionId(slide);
+            return withDocumentHistory(state, {
+              presentation: { ...state.presentation, slides: state.presentation.slides.map((item) => item.id === slideId ? slide : item) },
+              editingTextId: null, editingTextSelectAll: false, selectedElementIds: id ? [id] : [],
+            });
+          }),
+        updateTableCellText: (slideId, elementId, text) =>
+          set((state) => {
+            const previous = state.presentation.slides.find((slide) => slide.id === slideId);
+            const element = previous?.elements.find((element) => element.id === elementId);
+            if (!previous?.table || !element?.tableCell || element.tableId !== previous.table.id || getTableCellText(previous.table, element.tableCell) === text) return state;
+            const slide = updateTableSlide(previous, setTableCellText(previous.table, element.tableCell, text));
+            const ref = element.tableCell;
+            const replacement = slide.elements.find((item) => item.type === "text" && item.tableCell && item.tableCell.columnId === ref.columnId && item.tableCell.rowId === ref.rowId && item.tableCell.groupId === ref.groupId && item.tableCell.field === ref.field);
+            const selection = getTableSelectionId(slide);
+            return withDocumentHistory(state, {
+              presentation: { ...state.presentation, slides: state.presentation.slides.map((item) => item.id === slideId ? slide : item) },
+              editingTextId: state.editingTextId === elementId ? replacement?.id ?? null : state.editingTextId,
+              ...(state.activeSlideId === slideId && previous.elements.some((item) => item.tableId === previous.table?.id && state.selectedElementIds.includes(item.id)) ? {
+                selectedElementIds: selection ? [selection] : [],
+              } : {}),
+            });
+          }),
+        navigateTableCell: (direction) =>
+          set((state) => {
+            const slide = state.presentation.slides.find((slide) => slide.id === state.activeSlideId);
+            if (!slide?.table || !state.editingTextId) return state;
+            const ids = getTableCellOrder(slide);
+            const index = ids.indexOf(state.editingTextId);
+            const id = index >= 0 ? ids[index + direction] : undefined;
+            return { editingTextId: id ?? null, editingTextSelectAll: Boolean(id) };
+          }),
+        selectAgendaGraphic: (slideId) =>
+          set((state) => {
+            if (slideId !== state.activeSlideId) return state;
+            const original = state.presentation.slides.find((item) => item.id === slideId);
+            const slide = original ? detachAgendaStaticElements(original) : undefined;
+            const elementId = slide ? getAgendaGraphicSelectionId(slide) : undefined;
+            if (!slide || !elementId) return state;
+            return {
+              ...(slide !== original ? {
+                presentation: { ...state.presentation, slides: state.presentation.slides.map((item) => item.id === slideId ? slide : item) },
+              } : {}),
+              editingTextId: null,
+              editingTextSelectAll: false,
+              selectedElementIds: [elementId],
+            };
+          }),
+        openAgendaEditor: (slideId) =>
+          set((state) => {
+            const original = state.presentation.slides.find((item) => item.id === slideId);
+            const slide = original ? detachAgendaStaticElements(original) : undefined;
+            const elementId = slide ? getAgendaGraphicSelectionId(slide) : undefined;
+            return slide?.agenda ? {
+              ...(slide !== original ? {
+                presentation: { ...state.presentation, slides: state.presentation.slides.map((item) => item.id === slideId ? slide : item) },
+              } : {}),
+              agendaEditor: { slideId, initialData: cloneAgenda(slide.agenda) },
+              teamEditor: null,
+              timelineEditor: null,
+              editingTextId: null,
+              editingTextSelectAll: false,
+              selectedElementIds: elementId ? [elementId] : [],
+            } : state;
+          }),
+        closeAgendaEditor: () => set({ agendaEditor: null }),
+        saveAgenda: (data, measure) =>
+          set((state) => {
+            const session = state.agendaEditor;
+            if (!session || !isAgendaData(data) || Object.keys(getAgendaErrors(data, measure)).length > 0) return state;
+            const previous = state.presentation.slides.find((slide) => slide.id === session.slideId);
+            if (!previous?.agenda || previous.agenda.id !== data.id || previous.agenda.variant !== data.variant) return state;
+            const slide = createAgendaSlide(cloneAgenda(data), previous.id, measure, previous);
+            const slides = state.presentation.slides.map((item) => item.id === slide.id ? slide : item);
+            const elementId = getAgendaGraphicSelectionId(slide);
+            return withDocumentHistory(state, {
+              presentation: { ...state.presentation, slides },
+              activeSlideId: slide.id,
+              agendaEditor: null,
+              editingTextId: null,
+              editingTextSelectAll: false,
+              selectedElementIds: elementId ? [elementId] : [],
+            });
+          }),
+        selectTeamGraphic: (slideId) =>
+          set((state) => {
+            if (slideId !== state.activeSlideId) return state;
+            const original = state.presentation.slides.find((item) => item.id === slideId);
+            const slide = original ? detachTeamStaticElements(original) : undefined;
+            const elementId = slide ? getTeamGraphicSelectionId(slide) : undefined;
+            if (!slide || !elementId) return state;
+            return {
+              ...(slide !== original ? {
+                presentation: { ...state.presentation, slides: state.presentation.slides.map((item) => item.id === slideId ? slide : item) },
+              } : {}),
+              editingTextId: null,
+              editingTextSelectAll: false,
+              selectedElementIds: [elementId],
+            };
+          }),
+        openTeamEditor: (slideId) =>
+          set((state) => {
+            const original = state.presentation.slides.find((item) => item.id === slideId);
+            const slide = original ? detachTeamStaticElements(original) : undefined;
+            const elementId = slide ? getTeamGraphicSelectionId(slide) : undefined;
+            return slide?.team ? {
+              ...(slide !== original ? {
+                presentation: { ...state.presentation, slides: state.presentation.slides.map((item) => item.id === slideId ? slide : item) },
+              } : {}),
+              teamEditor: { slideId, initialData: cloneTeam(slide.team) },
+              agendaEditor: null,
+              timelineEditor: null,
+              editingTextId: null,
+              editingTextSelectAll: false,
+              selectedElementIds: elementId ? [elementId] : [],
+            } : state;
+          }),
+        closeTeamEditor: () => set({ teamEditor: null }),
+        saveTeam: (data, measure) =>
+          set((state) => {
+            const session = state.teamEditor;
+            if (!session || !isTeamData(data) || Object.keys(getTeamErrors(data, measure)).length > 0) return state;
+            const previous = state.presentation.slides.find((slide) => slide.id === session.slideId);
+            if (!previous?.team || previous.team.id !== data.id || previous.team.variant !== data.variant) return state;
+            const slide = createTeamSlide(cloneTeam(data), previous.id, measure, previous);
+            const slides = state.presentation.slides.map((item) => item.id === slide.id ? slide : item);
+            const elementId = getTeamGraphicSelectionId(slide);
+            return withDocumentHistory(state, {
+              presentation: { ...state.presentation, slides },
+              activeSlideId: slide.id,
+              teamEditor: null,
+              editingTextId: null,
+              editingTextSelectAll: false,
+              selectedElementIds: elementId ? [elementId] : [],
+            });
+          }),
+        beginInsertTimeline: (slideId) =>
+          set((state) => {
+            if (!state.presentation.slides.some((slide) => slide.id === slideId)) return state;
+            return {
+              timelineEditor: {
+                slideId,
+                timelineId: null,
+                initialData: createDefaultTimeline("bars", createUniqueId("component"), todayDateInput()),
+              },
+              agendaEditor: null,
+              teamEditor: null,
+              editingTextId: null,
+              editingTextSelectAll: false,
+              selectedElementIds: [],
+            };
+          }),
+        selectTimelineGraphic: (slideId, timelineId) =>
+          set((state) => {
+            if (slideId !== state.activeSlideId) return state;
+            const original = state.presentation.slides.find((item) => item.id === slideId);
+            const slide = original ? detachTimelineStaticElements(original) : undefined;
+            const elementId = slide ? getTimelineGraphicSelectionId(slide, timelineId) : undefined;
+            if (!slide || !elementId) return state;
+            return {
+              ...(slide !== original ? {
+                presentation: { ...state.presentation, slides: state.presentation.slides.map((item) => item.id === slideId ? slide : item) },
+              } : {}),
+              editingTextId: null,
+              editingTextSelectAll: false,
+              selectedElementIds: [elementId],
+            };
+          }),
+        openTimelineEditor: (slideId, timelineId) =>
+          set((state) => {
+            const original = state.presentation.slides.find((item) => item.id === slideId);
+            const slide = original ? detachTimelineStaticElements(original) : undefined;
+            const timeline = slide?.timelines?.find((item) => item.id === timelineId);
+            const elementId = slide ? getTimelineGraphicSelectionId(slide, timelineId) : undefined;
+            if (!slide || !timeline) return state;
+            return {
+              ...(slide !== original ? {
+                presentation: { ...state.presentation, slides: state.presentation.slides.map((item) => item.id === slideId ? slide : item) },
+              } : {}),
+              timelineEditor: { slideId, timelineId, initialData: cloneTimeline(timeline) },
+              agendaEditor: null,
+              teamEditor: null,
+              editingTextId: null,
+              editingTextSelectAll: false,
+              selectedElementIds: elementId ? [elementId] : [],
+            };
+          }),
+        closeTimelineEditor: () => set({ timelineEditor: null }),
+        saveTimeline: (data, measure) =>
+          set((state) => {
+            const session = state.timelineEditor;
+            if (!session || !isTimelineData(data) || data.id !== session.initialData.id || data.placement !== session.initialData.placement || data.variant !== session.initialData.variant || Object.keys(getDynamicTimelineErrors(data, measure)).length > 0) return state;
+            const previous = state.presentation.slides.find((slide) => slide.id === session.slideId);
+            if (!previous) return state;
+            const existing = previous.timelines?.find((timeline) => timeline.id === session.timelineId);
+            if (session.timelineId) {
+              if (!existing || existing.id !== data.id || existing.variant !== data.variant || existing.placement !== data.placement) return state;
+            } else if (data.placement !== "component" || previous.timelines?.some((timeline) => timeline.id === data.id)) return state;
+            const slide = createDynamicTimelineSlide(cloneTimeline(data), previous.id, measure, previous);
+            const slides = state.presentation.slides.map((item) => item.id === slide.id ? slide : item);
+            const elementId = getTimelineGraphicSelectionId(slide, data.id);
+            return withDocumentHistory(state, {
+              presentation: { ...state.presentation, slides },
+              activeSlideId: slide.id,
+              timelineEditor: null,
+              editingTextId: null,
+              editingTextSelectAll: false,
+              selectedElementIds: elementId ? [elementId] : [],
+            });
+          }),
+        removeTimeline: (slideId, timelineId) =>
+          set((state) => {
+            const slide = state.presentation.slides.find((item) => item.id === slideId);
+            if (!slide?.timelines?.some((timeline) => timeline.id === timelineId && timeline.placement === "component")) return state;
+            return withDocumentHistory(state, {
+              presentation: {
+                ...state.presentation,
+                slides: state.presentation.slides.map((item) => item.id === slideId ? {
+                  ...item,
+                  timelines: item.timelines?.filter((timeline) => timeline.id !== timelineId),
+                  elements: item.elements.filter((element) => element.timelineId !== timelineId),
+                } : item),
+              },
+              selectedElementIds: [],
+              editingTextId: null,
+              editingTextSelectAll: false,
+              timelineEditor: state.timelineEditor?.timelineId === timelineId ? null : state.timelineEditor,
+            });
+          }),
         addElement: (slideId, element) =>
           set((state) => {
             const slideIndex = state.presentation.slides.findIndex(
@@ -237,10 +647,11 @@ export function createEditorStore(
             const addedElements = slide.darkMode
               ? elements.map((element) => applyDarkModeToElement(element, true))
               : elements;
-            slides[slideIndex] = {
-              ...slide,
-              elements: [...slide.elements, ...addedElements],
-            };
+            let updated: Slide = { ...slide, elements: [...slide.elements, ...addedElements] };
+            for (const block of textBlocksFromElements(addedElements)) {
+              if (isTextBlockData(block)) updated = upsertTextBlock(updated, block);
+            }
+            slides[slideIndex] = updated;
 
             return withDocumentHistory(state, {
               presentation: { ...state.presentation, slides },
@@ -331,12 +742,28 @@ export function createEditorStore(
               return state;
             }
 
+            if (element.textBlockId && activeSlide) {
+              const group = activeSlide.elements.filter((item) => item.textBlockId === element.textBlockId && item.visible !== false && !item.locked).map((item) => item.id);
+              const current = state.selectedElementIds.filter((id) => {
+                const item = activeSlide.elements.find((item) => item.id === id);
+                return !item?.agendaId && !item?.teamId && !item?.timelineId && !item?.tableId;
+              });
+              const selected = current.includes(elementId);
+              const ids = additive ? selected ? current.filter((id) => !group.includes(id)) : [...current, ...group]
+                : [elementId, ...(selected ? current : group).filter((id) => id !== elementId)];
+              return { editingTextId: null, editingTextSelectAll: false, selectedElementIds: ids };
+            }
+
             if (additive) {
-              const selectedElementIds = state.selectedElementIds.includes(
+              const currentIds = state.selectedElementIds.filter((id) => {
+                const selected = activeSlide?.elements.find((item) => item.id === id);
+                return !selected?.agendaId && !selected?.teamId && !selected?.timelineId && !selected?.tableId;
+              });
+              const selectedElementIds = currentIds.includes(
                 elementId,
               )
-                ? state.selectedElementIds.filter((id) => id !== elementId)
-                : [...state.selectedElementIds, elementId];
+                ? currentIds.filter((id) => id !== elementId)
+                : [...currentIds, elementId];
 
               return {
                 editingTextId: null,
@@ -379,7 +806,7 @@ export function createEditorStore(
             return {
               editingTextId: null,
               editingTextSelectAll: false,
-              selectedElementIds,
+              selectedElementIds: expandTextBlockSelection(activeSlide, selectedElementIds),
             };
           }),
         selectAllElements: () =>
@@ -443,7 +870,7 @@ export function createEditorStore(
             ].slice(-HISTORY_LIMIT);
 
             return {
-              presentation: previous.presentation,
+              presentation: reflowTextBlockPresentation(normalizeTablePresentation(normalizeTimelinePresentation(normalizeTeamPresentation(normalizeAgendaPresentation(previous.presentation))))),
               activeSlideId: previous.activeSlideId,
               undoStack: state.undoStack.slice(0, -1),
               redoStack,
@@ -469,7 +896,7 @@ export function createEditorStore(
             ].slice(-HISTORY_LIMIT);
 
             return {
-              presentation: next.presentation,
+              presentation: reflowTextBlockPresentation(normalizeTablePresentation(normalizeTimelinePresentation(normalizeTeamPresentation(normalizeAgendaPresentation(next.presentation))))),
               activeSlideId: next.activeSlideId,
               undoStack,
               redoStack: state.redoStack.slice(0, -1),
@@ -478,84 +905,8 @@ export function createEditorStore(
               selectedElementIds: [],
             };
           }),
-        deleteElement: (slideId, elementId) =>
-          set((state) => {
-            let didDelete = false;
-            const slides = state.presentation.slides.map((slide) => {
-              if (slide.id !== slideId) {
-                return slide;
-              }
-
-              const elements = slide.elements.filter((element) => {
-                const shouldDelete = element.id === elementId;
-                didDelete ||= shouldDelete;
-                return !shouldDelete;
-              });
-
-              return didDelete
-                ? { ...slide, elements: removeOrphanedCardParts(elements) }
-                : slide;
-            });
-
-            if (!didDelete) {
-              return state;
-            }
-
-            return withDocumentHistory(state, {
-              presentation: { ...state.presentation, slides },
-              editingTextId:
-                state.editingTextId === elementId
-                  ? null
-                  : state.editingTextId,
-              editingTextSelectAll:
-                state.editingTextId === elementId
-                  ? false
-                  : state.editingTextSelectAll,
-              selectedElementIds: state.selectedElementIds.includes(elementId)
-                ? []
-                : state.selectedElementIds,
-            });
-          }),
-        deleteElements: (slideId, elementIds) =>
-          set((state) => {
-            const idsToDelete = new Set(elementIds);
-            let didDelete = false;
-            const slides = state.presentation.slides.map((slide) => {
-              if (slide.id !== slideId) {
-                return slide;
-              }
-
-              const elements = slide.elements.filter(
-                (element) => !idsToDelete.has(element.id),
-              );
-
-              if (elements.length === slide.elements.length) {
-                return slide;
-              }
-
-              didDelete = true;
-              return { ...slide, elements: removeOrphanedCardParts(elements) };
-            });
-
-            if (!didDelete) {
-              return state;
-            }
-
-            const isEditingDeleted =
-              state.editingTextId !== null &&
-              idsToDelete.has(state.editingTextId);
-
-            return withDocumentHistory(state, {
-              presentation: { ...state.presentation, slides },
-              editingTextId: isEditingDeleted ? null : state.editingTextId,
-              editingTextSelectAll: isEditingDeleted
-                ? false
-                : state.editingTextSelectAll,
-              selectedElementIds: state.selectedElementIds.filter(
-                (id) => !idsToDelete.has(id),
-              ),
-            });
-          }),
+        deleteElement: (slideId, elementId) => set((state) => deleteSlideElements(state, slideId, [elementId])),
+        deleteElements: (slideId, elementIds) => set((state) => deleteSlideElements(state, slideId, elementIds)),
         duplicateElement: (slideId, elementId) =>
           set((state) => {
             const slideIndex = state.presentation.slides.findIndex(
@@ -566,7 +917,21 @@ export function createEditorStore(
               (element) => element.id === elementId,
             );
 
-            if (!slide || elementIndex === undefined || elementIndex < 0) {
+            const blockId = elementIndex !== undefined && elementIndex >= 0 ? slide?.elements[elementIndex].textBlockId : undefined;
+            const block = slide?.textBlocks?.find((block) => block.id === blockId);
+            if (slide && block) {
+              const duplicated = cloneTextBlock(block, true, 20);
+              const updated = upsertTextBlock(slide, duplicated);
+              const slides = [...state.presentation.slides];
+              slides[slideIndex] = updated;
+              return withDocumentHistory(state, {
+                presentation: { ...state.presentation, slides },
+                editingTextId: null, editingTextSelectAll: false,
+                selectedElementIds: updated.elements.filter((element) => element.textBlockId === duplicated.id).map((element) => element.id),
+              });
+            }
+
+            if (!slide || elementIndex === undefined || elementIndex < 0 || slide.elements[elementIndex].agendaId || slide.elements[elementIndex].teamId || slide.elements[elementIndex].timelineId || slide.elements[elementIndex].tableId) {
               return state;
             }
 
@@ -589,66 +954,26 @@ export function createEditorStore(
           }),
         updateElement: (slideId, elementId, updates) =>
           set((state) => {
-            let didUpdate = false;
+            let changed = false;
             const slides = state.presentation.slides.map((slide) => {
-              if (slide.id !== slideId) {
-                return slide;
-              }
-
-              const elements = slide.elements.map((element) => {
-                if (element.id !== elementId) {
-                  return element;
-                }
-
-                didUpdate = true;
-                return { ...element, ...updates };
-              });
-
-              return didUpdate ? { ...slide, elements } : slide;
+              if (slide.id !== slideId) return slide;
+              const updated = applySlideElementUpdates(slide, [{ elementId, updates }]);
+              changed ||= updated !== slide;
+              return updated;
             });
-
-            return didUpdate
-              ? withDocumentHistory(state, {
-                  presentation: { ...state.presentation, slides },
-                })
-              : state;
+            return changed ? withDocumentHistory(state, { presentation: { ...state.presentation, slides } }) : state;
           }),
         updateElements: (slideId, updates) =>
           set((state) => {
-            if (updates.length === 0) {
-              return state;
-            }
-
-            const updateMap = new Map(
-              updates.map((update) => [update.elementId, update.updates]),
-            );
-            let didUpdate = false;
+            if (!updates.length) return state;
+            let changed = false;
             const slides = state.presentation.slides.map((slide) => {
-              if (slide.id !== slideId) {
-                return slide;
-              }
-
-              let didUpdateSlide = false;
-              const elements = slide.elements.map((element) => {
-                const elementUpdates = updateMap.get(element.id);
-
-                if (!elementUpdates) {
-                  return element;
-                }
-
-                didUpdate = true;
-                didUpdateSlide = true;
-                return { ...element, ...elementUpdates } as SlideElement;
-              });
-
-              return didUpdateSlide ? { ...slide, elements } : slide;
+              if (slide.id !== slideId) return slide;
+              const updated = applySlideElementUpdates(slide, updates);
+              changed ||= updated !== slide;
+              return updated;
             });
-
-            return didUpdate
-              ? withDocumentHistory(state, {
-                  presentation: { ...state.presentation, slides },
-                })
-              : state;
+            return changed ? withDocumentHistory(state, { presentation: { ...state.presentation, slides } }) : state;
           }),
         deleteSlide: (slideId) =>
           set((state) => {
@@ -746,7 +1071,8 @@ export function createEditorStore(
               }
 
               didUpdate = true;
-              return applyDarkModeToSlide(slide, !slide.darkMode);
+              const updated = applyDarkModeToSlide(slide, !slide.darkMode);
+              return slide.table ? updateTableSlide(updated, slide.table) : updated;
             });
 
             return didUpdate
@@ -804,11 +1130,11 @@ export function createEditorStore(
               (item) => item.id === elementId,
             );
 
-            return element?.type === "text" && element.visible !== false
+            return element?.type === "text" && element.visible !== false && !element.agendaId && !element.teamId && !element.timelineId && (!element.tableId || element.tableCell)
               ? {
                   editingTextId: elementId,
-                  editingTextSelectAll: false,
-                  selectedElementIds: [elementId],
+                  editingTextSelectAll: Boolean(element.tableCell || element.textBlockId),
+                  selectedElementIds: element.textBlockId && activeSlide ? [elementId, ...activeSlide.elements.filter((item) => item.textBlockId === element.textBlockId && item.id !== elementId).map((item) => item.id)] : [elementId],
                 }
               : state;
           }),

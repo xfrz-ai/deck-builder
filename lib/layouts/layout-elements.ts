@@ -23,6 +23,9 @@ const PEOPLE_PHOTO_HEIGHT = 235;
 // Square 3D brand objects, exported from Figma at 1254×1254.
 export const WKND_3D_DIR = "/assets/3d-logo-wknd";
 export const WKND_3D_SOURCE_SIZE = 1254;
+// The QA iPhone render, with its screen content baked in.
+const PHONE_MOCKUP_SRC = "/assets/mockup-iphone/QA/Phone%20Mockup.png";
+export const PHONE_MOCKUP_SOURCE = { width: 360, height: 740 } as const;
 // Square architecture photos used as image placeholders.
 const PLACEHOLDER_DIR = "/assets/img-placeholder";
 const PLACEHOLDER_SIZE = 1000;
@@ -119,6 +122,38 @@ export function createLayoutPlaceholderImage({
   };
 }
 
+// The iPhone mockup at `width`, keeping its aspect ratio.
+export function createLayoutPhone({
+  id,
+  rotation = 0,
+  width,
+  x,
+  y,
+}: Pick<ImageElement, "id" | "x" | "y"> & {
+  rotation?: number;
+  width: number;
+}): ImageElement {
+  return {
+    id,
+    type: "image",
+    x,
+    y,
+    width,
+    height: Math.round(
+      (width * PHONE_MOCKUP_SOURCE.height) / PHONE_MOCKUP_SOURCE.width,
+    ),
+    rotation,
+    opacity: 1,
+    locked: false,
+    visible: true,
+    src: PHONE_MOCKUP_SRC,
+    originalWidth: PHONE_MOCKUP_SOURCE.width,
+    originalHeight: PHONE_MOCKUP_SOURCE.height,
+    cornerRadius: 0,
+    fit: "contain",
+  };
+}
+
 // A square 3D brand object from the WKND set.
 export function createLayoutObject({
   file,
@@ -149,8 +184,35 @@ export function createLayoutObject({
   };
 }
 
-// A 3D object turned `rotation` degrees about its centre. Rotation pivots on
-// the top-left corner, so the corner is offset to keep `center` in place.
+// Top-left corner for a `width`×`height` box turned `rotation` degrees about
+// `center`. Konva rotates about the top-left corner, so it is offset to keep
+// the centre in place.
+export function getRotatedOrigin({
+  center,
+  height,
+  rotation,
+  width,
+}: {
+  center: { x: number; y: number };
+  height: number;
+  rotation: number;
+  width: number;
+}) {
+  const angle = (rotation * Math.PI) / 180;
+  const halfWidth = width / 2;
+  const halfHeight = height / 2;
+
+  return {
+    x: Math.round(
+      center.x - halfWidth * Math.cos(angle) + halfHeight * Math.sin(angle),
+    ),
+    y: Math.round(
+      center.y - halfWidth * Math.sin(angle) - halfHeight * Math.cos(angle),
+    ),
+  };
+}
+
+// A 3D object turned `rotation` degrees about its centre.
 export function createRotatedLayoutObject({
   center,
   file,
@@ -164,16 +226,12 @@ export function createRotatedLayoutObject({
   rotation: number;
   size: number;
 }): ImageElement {
-  const angle = (rotation * Math.PI) / 180;
-  const half = size / 2;
-
   return {
     ...createLayoutObject({
       id,
       file,
       size,
-      x: Math.round(center.x - half * Math.cos(angle) + half * Math.sin(angle)),
-      y: Math.round(center.y - half * Math.sin(angle) - half * Math.cos(angle)),
+      ...getRotatedOrigin({ center, width: size, height: size, rotation }),
     }),
     rotation,
   };

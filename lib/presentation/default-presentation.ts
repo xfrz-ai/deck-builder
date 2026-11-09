@@ -1,3 +1,4 @@
+import { createFrameElements } from "@/lib/backgrounds/background-themes";
 import {
   PRESENTATION_ASPECT_RATIO,
   PRESENTATION_HEIGHT,
@@ -17,7 +18,7 @@ export function createDefaultPresentation(): Presentation {
       {
         id: "slide-1",
         background: "#ffffff",
-        elements: [],
+        elements: createFrameElements("slide-1"),
       },
     ],
   };

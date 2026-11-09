@@ -221,7 +221,7 @@ function createCallout(
 export const WKND_MOCKUP_LAPTOP_CALLOUTS_LAYOUT: SlideLayoutDefinition = {
   id: ID,
   name: "Laptop Callouts",
-  category: "mockup",
+  category: "macbook",
   slide: {
     id: `layout-${ID}`,
     background: WKND_COLORS.blue,

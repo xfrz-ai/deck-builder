@@ -261,7 +261,7 @@ function createMatrix(): SlideElement[] {
 export const WKND_MOCKUP_PHONE_LAYOUT: SlideLayoutDefinition = {
   id: ID,
   name: "Device Matrix",
-  category: "mockup",
+  category: "iphone",
   slide: {
     id: `layout-${ID}`,
     background: WKND_COLORS.orange,

@@ -72,7 +72,7 @@ function createStar(): ImageElement {
 export const WKND_MOCKUP_LAPTOP_LAYOUT: SlideLayoutDefinition = {
   id: ID,
   name: "Laptop Showcase",
-  category: "mockup",
+  category: "macbook",
   slide: {
     id: `layout-${ID}`,
     background: WKND_COLORS.blue,

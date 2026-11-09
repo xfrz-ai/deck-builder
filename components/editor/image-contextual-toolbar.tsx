@@ -89,7 +89,7 @@ export function ImageContextualToolbar() {
     (item) => item.id === selectedElementId,
   );
 
-  if (!activeSlide || element?.type !== "image") {
+  if (!activeSlide || element?.type !== "image" || element.teamId || element.timelineId || element.tableId) {
     return null;
   }
 

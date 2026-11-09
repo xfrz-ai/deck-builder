@@ -1,3 +1,4 @@
+import { attachDynamicTable } from "@/lib/table/table-migration";
 import { createFrameElements } from "@/lib/backgrounds/background-themes";
 import type { SlideLayoutDefinition } from "@/lib/layouts/layout-definition";
 import {
@@ -262,7 +263,7 @@ export const WKND_TABLE_PACKAGES_LAYOUT: SlideLayoutDefinition = {
   id: ID,
   name: "Choose Your Package",
   category: "table",
-  slide: {
+  slide: attachDynamicTable({
     id: `layout-${ID}`,
     background: WKND_COLORS.cream,
     elements: [
@@ -323,5 +324,5 @@ export const WKND_TABLE_PACKAGES_LAYOUT: SlideLayoutDefinition = {
       ...FEATURES.flatMap(createFeature),
       createStar(),
     ],
-  },
+  }, "packages", ID),
 };

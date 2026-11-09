@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 
 import { ClientSlideRenderer } from "@/components/editor/client-slide-renderer";
 import { Button } from "@/components/ui/button";
+import { createFrameElements } from "@/lib/backgrounds/background-themes";
 import type { SlideLayoutDefinition } from "@/lib/layouts/layout-definition";
 import {
   SLIDE_LAYOUTS,
@@ -20,7 +21,7 @@ import {
 const BLANK_PREVIEW_SLIDE: Slide = {
   id: "layout-preview-blank",
   background: "#FFFFFF",
-  elements: [],
+  elements: createFrameElements("layout-preview-blank"),
 };
 
 // "All" stays last, so new categories go before it.
@@ -29,11 +30,13 @@ const LAYOUT_FILTERS = [
   { id: "agenda", label: "Agenda" },
   { id: "team", label: "Our Team" },
   { id: "timeline", label: "Timeline" },
+  { id: "sow", label: "SOW" },
   { id: "table", label: "Table" },
   { id: "image", label: "Image + Text" },
   { id: "bento", label: "Bento" },
   { id: "text", label: "Full Text" },
-  { id: "mockup", label: "Mockup" },
+  { id: "macbook", label: "Mockup MacBook" },
+  { id: "iphone", label: "Mockup iPhone" },
   { id: "all", label: "All" },
 ] as const;
 
@@ -147,7 +150,7 @@ export function SlideLayoutPicker({
 }: SlideLayoutPickerProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const [filter, setFilter] = useState<LayoutFilter>("cover");
-  const showBlank = filter === "all";
+  const showBlank = filter === "cover" || filter === "all";
   const visibleLayouts =
     filter === "all"
       ? SLIDE_LAYOUTS
@@ -254,7 +257,7 @@ export function SlideLayoutPicker({
           <div className="grid grid-cols-4 gap-2.5">
             {showBlank ? (
               <LayoutPreview
-                description="A clean 16:9 canvas"
+                description="WKND header & footer"
                 icon="blank"
                 name="Blank slide"
                 onSelect={onSelectBlank}

@@ -5,6 +5,8 @@ import { useEffect, useRef, useState } from "react";
 import { ClientSlideRenderer } from "@/components/editor/client-slide-renderer";
 import { ElementContextMenu } from "@/components/editor/element-context-menu";
 import { ImageContextualToolbar } from "@/components/editor/image-contextual-toolbar";
+import { TableCellChoices } from "@/components/editor/table-cell-choices";
+import { getTableCellChoices, getTableCellText } from "@/lib/table/table-model";
 import { TextEditorOverlay } from "@/components/editor/text-editor-overlay";
 import { TextContextualToolbar } from "@/components/editor/text-contextual-toolbar";
 import { TopBar } from "@/components/editor/top-bar";
@@ -14,6 +16,7 @@ import {
   FIT_HORIZONTAL_PADDING,
   FIT_VERTICAL_PADDING,
 } from "@/lib/canvas/zoom";
+import { getCanvasFont } from "@/lib/text/measure-text";
 import { selectActiveSlide, useEditorStore } from "@/store/editor-store";
 
 interface WorkspaceSize {
@@ -31,6 +34,7 @@ export function CanvasWorkspace() {
     width: 0,
   });
   const [fitScale, setFitScale] = useState(1);
+  const [plainTableCellId, setPlainTableCellId] = useState<string | null>(null);
 
   const presentationWidth = useEditorStore(
     (state) => state.presentation.width,
@@ -57,8 +61,31 @@ export function CanvasWorkspace() {
   );
   const stopTextEditing = useEditorStore((state) => state.stopTextEditing);
   const clearSelection = useEditorStore((state) => state.clearSelection);
+  const openAgendaEditor = useEditorStore((state) => state.openAgendaEditor);
+  const selectAgendaGraphic = useEditorStore((state) => state.selectAgendaGraphic);
+  const openTeamEditor = useEditorStore((state) => state.openTeamEditor);
+  const selectTeamGraphic = useEditorStore((state) => state.selectTeamGraphic);
+  const openTimelineEditor = useEditorStore((state) => state.openTimelineEditor);
+  const selectTimelineGraphic = useEditorStore((state) => state.selectTimelineGraphic);
+  const selectTableGraphic = useEditorStore((state) => state.selectTableGraphic);
+  const updateTableCellText = useEditorStore((state) => state.updateTableCellText);
+  const navigateTableCell = useEditorStore((state) => state.navigateTableCell);
   const updateElement = useEditorStore((state) => state.updateElement);
   const updateElements = useEditorStore((state) => state.updateElements);
+  const reflowTextBlocks = useEditorStore((state) => state.reflowTextBlocks);
+
+  useEffect(() => { setPlainTableCellId(null); }, [editingTextId]);
+
+  useEffect(() => {
+    let mounted = true;
+    const reflow = () => { if (mounted) reflowTextBlocks(); };
+    Promise.allSettled([
+      document.fonts.load(getCanvasFont("Plus Jakarta Sans", 28, 400)),
+      document.fonts.load(getCanvasFont("Plus Jakarta Sans", 72, 700)),
+    ]).then(reflow);
+    document.fonts.addEventListener("loadingdone", reflow);
+    return () => { mounted = false; document.fonts.removeEventListener("loadingdone", reflow); };
+  }, [reflowTextBlocks]);
 
   useEffect(() => {
     const viewport = viewportRef.current;
@@ -125,8 +152,9 @@ export function CanvasWorkspace() {
   const editingElement = activeSlide.elements.find(
     (element) => element.id === editingTextId,
   );
-  const editingText =
-    editingElement?.type === "text" ? editingElement : undefined;
+  const editingText = editingElement?.type === "text" ? editingElement : undefined;
+  const tableChoices = editingText?.tableCell && activeSlide.table && plainTableCellId !== editingText.id ? getTableCellChoices(activeSlide.table, editingText.tableCell) : null;
+  const overlayText = editingText?.tableCell && activeSlide.table ? { ...editingText, text: getTableCellText(activeSlide.table, editingText.tableCell) } : editingText;
 
   return (
     <main className={`${WORKSPACE_CLASS_NAME} overflow-hidden`}>
@@ -150,11 +178,18 @@ export function CanvasWorkspace() {
                 style={{ height: canvasHeight, width: canvasWidth }}
               >
                 <ClientSlideRenderer
-                  editingElementId={editingTextId}
+                  editingElementId={tableChoices ? null : editingTextId}
                   interactive
                   logicalHeight={presentationHeight}
                   logicalWidth={presentationWidth}
                   onCanvasPointerDown={clearSelection}
+                  onAgendaEdit={() => openAgendaEditor(activeSlide.id)}
+                  onAgendaSelect={() => selectAgendaGraphic(activeSlide.id)}
+                  onTeamEdit={() => openTeamEditor(activeSlide.id)}
+                  onTeamSelect={() => selectTeamGraphic(activeSlide.id)}
+                  onTableSelect={() => selectTableGraphic(activeSlide.id)}
+                  onTimelineEdit={(timelineId) => openTimelineEditor(activeSlide.id, timelineId)}
+                  onTimelineSelect={(timelineId) => selectTimelineGraphic(activeSlide.id, timelineId)}
                   onElementsDragEnd={(positions) =>
                     updateElements(
                       activeSlide.id,
@@ -175,17 +210,28 @@ export function CanvasWorkspace() {
                   showLayoutGrid={showLayoutGrid}
                   slide={activeSlide}
                 />
-                {editingText ? (
-                  <TextEditorOverlay
+                {editingText && tableChoices ? (
+                  <TableCellChoices
+                    key={editingText.id}
                     element={editingText}
+                    choices={tableChoices}
+                    scale={zoom}
+                    onChoose={(value) => { updateTableCellText(activeSlide.id, editingText.id, value); stopTextEditing(); }}
+                    onCustom={() => setPlainTableCellId(editingText.id)}
+                    onClose={stopTextEditing}
+                    onNavigate={navigateTableCell}
+                  />
+                ) : editingText && overlayText ? (
+                  <TextEditorOverlay
+                    element={overlayText}
+                    autoSave={!editingText.tableId}
+                    onNavigate={editingText.tableId ? navigateTableCell : undefined}
                     key={editingText.id}
                     onCancel={stopTextEditing}
-                    onCommit={({ height, text }) =>
-                      updateElement(activeSlide.id, editingText.id, {
-                        height,
-                        text,
-                      })
-                    }
+                    onCommit={({ height, text }) => {
+                      if (editingText.tableId) updateTableCellText(activeSlide.id, editingText.id, text);
+                      else updateElement(activeSlide.id, editingText.id, { height, text });
+                    }}
                     onToggleBold={() =>
                       updateElement(activeSlide.id, editingText.id, {
                         fontWeight:

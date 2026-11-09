@@ -7,6 +7,11 @@ import {
   type Slide,
 } from "@/types/presentation";
 import { isSolidHexColor } from "@/lib/slides/slide-utils";
+import { isAgendaData } from "@/lib/agenda/agenda-model";
+import { isTeamData } from "@/lib/team/team-model";
+import { isTimelineData } from "@/lib/timeline/timeline-model";
+import { isTableCellRef, isTableData } from "@/lib/table/table-model";
+import { isTextBlockData } from "@/lib/text/text-block";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -14,6 +19,27 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
+}
+
+function isTimelineCollection(value: unknown) {
+  if (!Array.isArray(value)) return false;
+  const ids = new Set<string>();
+  let fullSlides = 0;
+  return value.every((timeline: unknown) => {
+    if (!isTimelineData(timeline) || ids.has(timeline.id)) return false;
+    ids.add(timeline.id);
+    if (timeline.placement === "slide") fullSlides++;
+    return fullSlides <= 1;
+  });
+}
+
+function isTextBlockCollection(value: unknown) {
+  if (!Array.isArray(value)) return false;
+  const ids = new Set<string>();
+  return value.every((block: unknown) => {
+    if (!isTextBlockData(block) || ids.has(block.id)) return false;
+    ids.add(block.id); return true;
+  });
 }
 
 function isComponentPart(value: unknown) {
@@ -43,6 +69,13 @@ function hasValidBaseElement(value: Record<string, unknown>) {
     (value.locked === undefined || typeof value.locked === "boolean") &&
     (value.visible === undefined || typeof value.visible === "boolean") &&
     (value.role === undefined || value.role === "background") &&
+    (value.agendaId === undefined || (typeof value.agendaId === "string" && value.agendaId.length > 0)) &&
+    (value.teamId === undefined || (typeof value.teamId === "string" && value.teamId.length > 0)) &&
+    (value.timelineId === undefined || (typeof value.timelineId === "string" && value.timelineId.length > 0)) &&
+    (value.tableId === undefined || (typeof value.tableId === "string" && value.tableId.length > 0)) &&
+    (value.tableCell === undefined || (typeof value.tableId === "string" && isTableCellRef(value.tableCell))) &&
+    ((value.textBlockId === undefined && value.textBlockPart === undefined) ||
+      (value.type === "text" && typeof value.textBlockId === "string" && value.textBlockId.length > 0 && (value.textBlockPart === "title" || value.textBlockPart === "body"))) &&
     (value.component === undefined || isComponentPart(value.component))
   );
 }
@@ -117,6 +150,11 @@ function isSlide(value: unknown): value is Slide {
     (value.backgroundThemeId === undefined ||
       typeof value.backgroundThemeId === "string") &&
     (value.darkMode === undefined || typeof value.darkMode === "boolean") &&
+    (value.agenda === undefined || isAgendaData(value.agenda)) &&
+    (value.team === undefined || isTeamData(value.team)) &&
+    (value.timelines === undefined || isTimelineCollection(value.timelines)) &&
+    (value.table === undefined || isTableData(value.table)) &&
+    (value.textBlocks === undefined || isTextBlockCollection(value.textBlocks)) &&
     Array.isArray(value.elements) &&
     value.elements.every(isSlideElement)
   );

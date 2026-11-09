@@ -1,3 +1,9 @@
+import type { AgendaData } from "@/types/agenda";
+import type { TeamData } from "@/types/team";
+import type { TimelineData } from "@/types/timeline";
+import type { TableCellRef, TableData } from "@/types/table";
+import type { TextBlockData, TextBlockPart } from "@/types/text-block";
+
 export const PRESENTATION_WIDTH = 1920;
 export const PRESENTATION_HEIGHT = 1080;
 export const PRESENTATION_ASPECT_RATIO = "16:9" as const;
@@ -32,6 +38,14 @@ export type BaseElement<
   visible?: boolean;
   role?: "background";
   component?: ComponentPart;
+  // Agenda graphic elements are edited together through their form.
+  agendaId?: string;
+  teamId?: string;
+  timelineId?: string;
+  tableId?: string;
+  tableCell?: TableCellRef;
+  textBlockId?: string;
+  textBlockPart?: TextBlockPart;
 };
 
 export type ShapeElement = BaseElement<"shape"> & {
@@ -79,6 +93,11 @@ export interface Slide {
   background: string;
   backgroundThemeId?: string;
   darkMode?: boolean;
+  agenda?: AgendaData;
+  team?: TeamData;
+  timelines?: TimelineData[];
+  table?: TableData;
+  textBlocks?: TextBlockData[];
   elements: SlideElement[];
 }
 

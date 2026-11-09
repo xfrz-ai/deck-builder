@@ -24,6 +24,7 @@ import type { TextElement } from "@/types/presentation";
 interface TextPropertiesProps {
   element: TextElement;
   slideId: string;
+  hideLayoutControls?: boolean;
 }
 
 interface NumericFieldProps {
@@ -49,7 +50,7 @@ function formatNumber(value: number) {
     : String(Number(value.toFixed(2)));
 }
 
-function NumericField({
+export function NumericField({
   label,
   max,
   min,
@@ -124,7 +125,7 @@ const segmentButtonClassName =
 const inputClassName =
   "h-9 w-full rounded-[10px] border border-surface-03 bg-surface-03 px-2 text-xs font-medium text-primary outline-none transition-colors focus:border-stroke-02 focus:bg-surface-02";
 
-export function TextProperties({ element, slideId }: TextPropertiesProps) {
+export function TextProperties({ element, slideId, hideLayoutControls = false }: TextPropertiesProps) {
   const updateElement = useEditorStore((state) => state.updateElement);
   const update = (updates: Parameters<typeof updateElement>[2]) =>
     updateElement(slideId, element.id, updates);
@@ -277,7 +278,7 @@ export function TextProperties({ element, slideId }: TextPropertiesProps) {
             </div>
           </div>
 
-          <label className="block space-y-1.5 text-[11px] font-medium text-muted-foreground">
+          {!hideLayoutControls ? <label className="block space-y-1.5 text-[11px] font-medium text-muted-foreground">
             <span>Vertical alignment</span>
             <select
               aria-label="Vertical alignment"
@@ -294,7 +295,7 @@ export function TextProperties({ element, slideId }: TextPropertiesProps) {
               <option value="middle">Middle</option>
               <option value="bottom">Bottom</option>
             </select>
-          </label>
+          </label> : null}
         </div>
       </Section>
 
@@ -333,7 +334,7 @@ export function TextProperties({ element, slideId }: TextPropertiesProps) {
         />
       </Section>
 
-      <Section title="Position">
+      {!hideLayoutControls ? <Section title="Position">
         <div className="grid grid-cols-2 gap-2.5">
           <NumericField
             key={`x-${element.x}`}
@@ -369,7 +370,7 @@ export function TextProperties({ element, slideId }: TextPropertiesProps) {
             value={element.rotation}
           />
         </div>
-      </Section>
+      </Section> : null}
     </div>
   );
 }

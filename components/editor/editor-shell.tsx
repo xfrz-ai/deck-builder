@@ -4,11 +4,15 @@ import { MonitorUp } from "lucide-react";
 import { useSyncExternalStore } from "react";
 
 import { CanvasWorkspace } from "@/components/editor/canvas-workspace";
+import { AgendaEditorDialog } from "@/components/editor/agenda-editor-dialog";
+import { TeamEditorDialog } from "@/components/editor/team-editor-dialog";
+import { TimelineEditorDialog } from "@/components/editor/timeline-editor-dialog";
 import { EditorKeyboardShortcuts } from "@/components/editor/editor-keyboard-shortcuts";
 import { EditorNotifications } from "@/components/editor/editor-notifications";
 import { PropertiesPanel } from "@/components/editor/properties-panel";
 import { SlideSidebar } from "@/components/editor/slide-sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { useEditorStore } from "@/store/editor-store";
 
 const DESKTOP_MEDIA_QUERY = "(min-width: 1280px)";
 
@@ -47,6 +51,9 @@ function DesktopNotice() {
 }
 
 export function EditorShell() {
+  const agendaEditor = useEditorStore((state) => state.agendaEditor);
+  const teamEditor = useEditorStore((state) => state.teamEditor);
+  const timelineEditor = useEditorStore((state) => state.timelineEditor);
   const isDesktop = useSyncExternalStore(
     subscribeToDesktopViewport,
     getDesktopSnapshot,
@@ -65,6 +72,9 @@ export function EditorShell() {
         <CanvasWorkspace />
         <SlideSidebar />
         <PropertiesPanel />
+        {agendaEditor ? <AgendaEditorDialog key={agendaEditor.initialData.id} session={agendaEditor} /> : null}
+        {teamEditor ? <TeamEditorDialog key={teamEditor.initialData.id} session={teamEditor} /> : null}
+        {timelineEditor ? <TimelineEditorDialog key={timelineEditor.initialData.id} session={timelineEditor} /> : null}
       </div>
     </TooltipProvider>
   );

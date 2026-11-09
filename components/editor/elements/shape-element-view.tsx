@@ -3,7 +3,7 @@
 import type { Group as KonvaGroup } from "konva/lib/Group";
 import type { KonvaEventObject, Node } from "konva/lib/Node";
 import { useCallback } from "react";
-import { Ellipse, Group, Rect } from "react-konva";
+import { Ellipse, Group, Line, Rect } from "react-konva";
 
 import type { ShapeElement } from "@/types/presentation";
 
@@ -29,6 +29,10 @@ export function ShapeElementView({
   onTransformEnd,
 }: ShapeElementViewProps) {
   const isCircle = element.shapeType === "circle";
+  // A rectangle with no height (or width) is a straight rule. Drawing it as
+  // a Rect strokes the same edge out and back, so a dash pattern overlaps
+  // itself and can look solid; a Line strokes it once.
+  const isRule = !isCircle && (element.height === 0 || element.width === 0);
   const canDrag = interactive && !element.locked;
   const dash = element.dashed
     ? [element.strokeWidth * 4, element.strokeWidth * 3]
@@ -111,6 +115,15 @@ export function ShapeElementView({
           strokeWidth={element.strokeWidth}
           x={element.width / 2}
           y={element.height / 2}
+        />
+      ) : isRule ? (
+        <Line
+          dash={dash}
+          hitStrokeWidth={Math.max(element.strokeWidth, 12)}
+          opacity={element.opacity}
+          points={[0, 0, element.width, element.height]}
+          stroke={element.stroke}
+          strokeWidth={element.strokeWidth}
         />
       ) : (
         <Rect

@@ -19,7 +19,7 @@ export const GENERATOR_PREVIEW_BACKGROUND = "#FFFFFF";
 export const generatorInputClassName =
   "h-9 w-full rounded-[10px] border border-surface-03 bg-surface-03 px-2.5 text-xs font-medium text-primary outline-none transition-colors focus:border-stroke-02 focus:bg-surface-02";
 
-function GeneratorPreview({
+export function GeneratorPreview({
   emptyMessage,
   slide,
 }: {
@@ -101,6 +101,7 @@ export function GeneratorDialog({
   const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const previousFocus = document.activeElement;
     const animationFrame = requestAnimationFrame(() => {
       dialogRef.current?.querySelector<HTMLInputElement>("input")?.focus();
     });
@@ -109,12 +110,29 @@ export function GeneratorDialog({
         event.preventDefault();
         onClose();
       }
+      if (event.key === "Tab") {
+        const controls = dialogRef.current?.querySelectorAll<HTMLElement>(
+          'button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled), [tabindex="0"]',
+        );
+        const first = controls?.[0];
+        const last = controls?.[controls.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last?.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first?.focus();
+        }
+      }
     };
 
-    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown, true);
     return () => {
       cancelAnimationFrame(animationFrame);
-      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keydown", handleKeyDown, true);
+      if (previousFocus instanceof HTMLElement && previousFocus.isConnected) {
+        previousFocus.focus();
+      }
     };
   }, [onClose]);
 
@@ -136,6 +154,9 @@ export function GeneratorDialog({
             event.stopPropagation();
           }
         }}
+        onCopy={(event) => event.stopPropagation()}
+        onCut={(event) => event.stopPropagation()}
+        onPaste={(event) => event.stopPropagation()}
         ref={dialogRef}
         role="dialog"
       >

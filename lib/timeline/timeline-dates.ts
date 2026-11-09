@@ -37,11 +37,12 @@ export function parseDateInput(value: string): number | null {
   }
 
   const [, year, month, day] = match.map(Number);
-  const time = Date.UTC(year, month - 1, day);
-  const date = new Date(time);
+  const date = new Date(0);
+  date.setUTCFullYear(year, month - 1, day);
+  date.setUTCHours(0, 0, 0, 0);
 
-  return date.getUTCMonth() === month - 1 && date.getUTCDate() === day
-    ? time / MS_PER_DAY
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
+    ? date.getTime() / MS_PER_DAY
     : null;
 }
 

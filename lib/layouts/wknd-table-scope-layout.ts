@@ -1,3 +1,4 @@
+import { attachDynamicTable } from "@/lib/table/table-migration";
 import { createFrameElements } from "@/lib/backgrounds/background-themes";
 import type { SlideLayoutDefinition } from "@/lib/layouts/layout-definition";
 import {
@@ -199,7 +200,7 @@ export const WKND_TABLE_SCOPE_LAYOUT: SlideLayoutDefinition = {
   id: ID,
   name: "Scope of Work",
   category: "table",
-  slide: {
+  slide: attachDynamicTable({
     id: `layout-${ID}`,
     background: WKND_COLORS.blue,
     darkMode: true,
@@ -286,5 +287,5 @@ export const WKND_TABLE_SCOPE_LAYOUT: SlideLayoutDefinition = {
       createRule(`${ID}-header-rule`, HEADER_RULE_Y),
       ...SERVICES.flatMap(createServiceRow),
     ],
-  },
+  }, "scope", ID),
 };

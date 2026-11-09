@@ -22,6 +22,9 @@ export function collectElementsToCopy(
     );
 
   return elements.flatMap((element) => {
+    // Agenda and Team graphics need their saved form data when copied.
+    // Keep individual owned elements out of the plain-element clipboard.
+    if (element.agendaId || element.teamId || element.timelineId || element.tableId) return [];
     if (!element.component) {
       return selected.has(element.id) ? [element] : [];
     }
@@ -69,6 +72,7 @@ export function cloneElementsForPaste(
     id: createUniqueId("element"),
     x: element.x + offset,
     y: element.y + offset,
+    ...(element.textBlockId ? { textBlockId: remap(element.textBlockId) } : {}),
     component: element.component && {
       ...element.component,
       instanceId: remap(element.component.instanceId),

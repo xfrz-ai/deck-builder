@@ -11,15 +11,14 @@ import {
   Shapes,
   Smartphone,
   Square,
-  Type,
 } from "lucide-react";
 import { type ComponentProps, useCallback, useRef, useState } from "react";
 
+import { TextTemplatePicker } from "@/components/editor/text-template-picker";
 import { BackgroundPicker } from "@/components/editor/background-picker";
 import { ImageGridPicker } from "@/components/editor/image-grid-picker";
 import { MockupDialog } from "@/components/editor/mockup-dialog";
 import { ScopeOfWorkGeneratorDialog } from "@/components/editor/scope-of-work-generator-dialog";
-import { TimelineGeneratorDialog } from "@/components/editor/timeline-generator-dialog";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -36,7 +35,6 @@ import {
   createCircleElement,
   createRectangleElement,
   createRoundedRectangleElement,
-  createTextElement,
 } from "@/lib/elements/create-element";
 import {
   CARD_GRID_OPTIONS,
@@ -47,6 +45,8 @@ import { createImageElement } from "@/lib/elements/create-image-element";
 import { notifyEditor } from "@/lib/editor/notifications";
 import { IMAGE_FILE_ACCEPT, loadImageFile } from "@/lib/image/image-file";
 import { useEditorStore } from "@/store/editor-store";
+
+const SHOW_TIMELINE_AND_SCOPE_TOOLS = false;
 
 function ToolButton({
   caption,
@@ -88,8 +88,6 @@ function CardGridPreview({ columns }: { columns: CardGridColumns }) {
 export function InsertToolbar() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
-  const [isTimelineOpen, setIsTimelineOpen] = useState(false);
-  const closeTimeline = useCallback(() => setIsTimelineOpen(false), []);
   const [isScopeOfWorkOpen, setIsScopeOfWorkOpen] = useState(false);
   const closeScopeOfWork = useCallback(() => setIsScopeOfWorkOpen(false), []);
   const [isMockupOpen, setIsMockupOpen] = useState(false);
@@ -97,6 +95,7 @@ export function InsertToolbar() {
   const activeSlideId = useEditorStore((state) => state.activeSlideId);
   const addElement = useEditorStore((state) => state.addElement);
   const addElements = useEditorStore((state) => state.addElements);
+  const beginInsertTimeline = useEditorStore((state) => state.beginInsertTimeline);
 
   const handleImageUpload = async (
     event: React.ChangeEvent<HTMLInputElement>,
@@ -135,13 +134,7 @@ export function InsertToolbar() {
 
   return (
     <div aria-label="Insert tools" className="flex gap-1 p-2" role="group">
-      <ToolButton
-        caption="Text"
-        label="Insert text"
-        onClick={() => addElement(activeSlideId, createTextElement())}
-      >
-        <Type className="size-[18px]" strokeWidth={1.8} />
-      </ToolButton>
+      <TextTemplatePicker />
 
       <ToolButton
         caption="Image"
@@ -228,27 +221,28 @@ export function InsertToolbar() {
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
-      <ToolButton
-        aria-haspopup="dialog"
-        caption="Timeline"
-        label="Insert timeline"
-        onClick={() => setIsTimelineOpen(true)}
-      >
-        <ChartGantt className="size-[18px]" strokeWidth={1.8} />
-      </ToolButton>
-      {isTimelineOpen ? (
-        <TimelineGeneratorDialog onClose={closeTimeline} />
-      ) : null}
-      <ToolButton
-        aria-haspopup="dialog"
-        caption="Scope"
-        label="Insert scope of work"
-        onClick={() => setIsScopeOfWorkOpen(true)}
-      >
-        <ClipboardList className="size-[18px]" strokeWidth={1.8} />
-      </ToolButton>
-      {isScopeOfWorkOpen ? (
-        <ScopeOfWorkGeneratorDialog onClose={closeScopeOfWork} />
+      {SHOW_TIMELINE_AND_SCOPE_TOOLS ? (
+        <>
+          <ToolButton
+            aria-haspopup="dialog"
+            caption="Timeline"
+            label="Insert timeline"
+            onClick={() => beginInsertTimeline(activeSlideId)}
+          >
+            <ChartGantt className="size-[18px]" strokeWidth={1.8} />
+          </ToolButton>
+          <ToolButton
+            aria-haspopup="dialog"
+            caption="Scope"
+            label="Insert scope of work"
+            onClick={() => setIsScopeOfWorkOpen(true)}
+          >
+            <ClipboardList className="size-[18px]" strokeWidth={1.8} />
+          </ToolButton>
+          {isScopeOfWorkOpen ? (
+            <ScopeOfWorkGeneratorDialog onClose={closeScopeOfWork} />
+          ) : null}
+        </>
       ) : null}
       <ToolButton
         aria-haspopup="dialog"

@@ -79,8 +79,9 @@ function createBarLabel(
   y: number,
   height: number,
   fontSize: number,
+  measureLabel?: (text: string, fontSize: number) => number,
 ) {
-  const textWidth = estimateTextWidth(label, fontSize);
+  const textWidth = Math.ceil(measureLabel?.(label, fontSize) ?? estimateTextWidth(label, fontSize));
   const trackRight = TRACK_X + TRACK_WIDTH;
   const fitsInside = textWidth + BAR_LABEL_PADDING * 2 <= barWidth;
   const outsideWidth = textWidth + 8;
@@ -122,6 +123,7 @@ function createBarLabel(
 export function createTimelineElements(
   model: TimelineModel,
   idPrefix: string,
+  measureLabel?: (text: string, fontSize: number) => number,
 ): SlideElement[] {
   const columnCount = Math.max(1, model.columns.length);
   const columnWidth = TRACK_WIDTH / columnCount;
@@ -214,6 +216,7 @@ export function createTimelineElements(
           y,
           barHeight,
           barFontSize,
+          measureLabel,
         ),
       ];
     }),

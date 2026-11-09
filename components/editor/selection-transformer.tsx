@@ -16,6 +16,7 @@ import {
 import { MIN_ELEMENT_SIZE } from "@/lib/elements/transform-utils";
 
 interface SelectionTransformerProps {
+  allowResize?: boolean;
   getElementNode: (elementId: string) => Node | null;
   // Guides a resize handle snaps to (layout grid plus other elements).
   getSnapGuides: () => SnapGuides;
@@ -70,6 +71,7 @@ function styleAnchor(anchor: Rect) {
 }
 
 export function SelectionTransformer({
+  allowResize = true,
   getElementNode,
   getSnapGuides,
   isSnapBypassed,
@@ -103,7 +105,7 @@ export function SelectionTransformer({
   }, [getElementNode, selectedElementIds]);
 
   const safeScale = Math.max(scale, 0.01);
-  const isSingleSelection = selectedElementIds.length === 1;
+  const isSingleSelection = selectedElementIds.length === 1 && allowResize;
 
   // Resize handles snap to guides on the axes they control. Positions are
   // absolute stage pixels, i.e. logical pixels times the scale.
