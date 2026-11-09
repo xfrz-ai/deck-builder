@@ -29,6 +29,8 @@ import { WKND_MOCKUP_PHONE_REGRESSION_LAYOUT } from "@/lib/layouts/wknd-mockup-p
 import { WKND_MOCKUP_PHONE_SHIPPED_LAYOUT } from "@/lib/layouts/wknd-mockup-phone-shipped-layout";
 import { WKND_MOCKUP_PHONE_QA_LAYOUT } from "@/lib/layouts/wknd-mockup-phone-qa-layout";
 import { WKND_MOCKUP_PHONE_LAYOUT } from "@/lib/layouts/wknd-mockup-phone-layout";
+import { WKND_THANK_YOU_LAYOUT } from "@/lib/layouts/wknd-thank-you-layout";
+import { WKND_QUESTIONS_LAYOUT } from "@/lib/layouts/wknd-questions-layout";
 import { WKND_TEAM_ORG_LAYOUT } from "@/lib/layouts/wknd-team-org-layout";
 import { WKND_TEAM_SQUADS_LAYOUT } from "@/lib/layouts/wknd-team-squads-layout";
 import { WKND_SOW_MODULES_LAYOUT } from "@/lib/layouts/wknd-sow-modules-layout";
@@ -80,6 +82,8 @@ export const SLIDE_LAYOUTS: readonly SlideLayoutDefinition[] = [
   WKND_MOCKUP_PHONE_QA_LAYOUT,
   WKND_MOCKUP_PHONE_REGRESSION_LAYOUT,
   WKND_MOCKUP_PHONE_SHIPPED_LAYOUT,
+  WKND_THANK_YOU_LAYOUT,
+  WKND_QUESTIONS_LAYOUT,
 ];
 
 export type SlideLayoutId = SlideLayoutDefinition["id"];

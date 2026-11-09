@@ -37,6 +37,7 @@ const LAYOUT_FILTERS = [
   { id: "text", label: "Full Text" },
   { id: "macbook", label: "Mockup MacBook" },
   { id: "iphone", label: "Mockup iPhone" },
+  { id: "thankyou", label: "Thank You" },
   { id: "all", label: "All" },
 ] as const;
 

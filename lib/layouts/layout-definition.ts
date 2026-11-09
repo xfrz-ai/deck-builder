@@ -13,6 +13,7 @@ export interface SlideLayoutDefinition {
     | "table"
     | "team"
     | "text"
+    | "thankyou"
     | "timeline";
   id: string;
   name: string;
