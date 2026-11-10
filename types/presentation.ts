@@ -3,6 +3,7 @@ import type { TeamData } from "@/types/team";
 import type { TimelineData } from "@/types/timeline";
 import type { TableCellRef, TableData } from "@/types/table";
 import type { TextBlockData, TextBlockPart } from "@/types/text-block";
+import type { ThemeId } from "@/lib/themes/deck-themes";
 
 export const PRESENTATION_WIDTH = 1920;
 export const PRESENTATION_HEIGHT = 1080;
@@ -21,6 +22,15 @@ export type ComponentPart = {
   instanceId: string;
   groupId: string;
   part: CardPart;
+};
+
+// The colors an element had before a theme recolored it. Themes are always
+// derived from these, so switching themes is reversible.
+export type ThemeBase = {
+  color?: string;
+  fill?: string;
+  stroke?: string;
+  src?: string;
 };
 
 export type BaseElement<
@@ -46,6 +56,7 @@ export type BaseElement<
   tableCell?: TableCellRef;
   textBlockId?: string;
   textBlockPart?: TextBlockPart;
+  themeBase?: ThemeBase;
 };
 
 export type ShapeElement = BaseElement<"shape"> & {
@@ -91,7 +102,9 @@ export type SlideElement = ShapeElement | TextElement | ImageElement;
 export interface Slide {
   id: string;
   background: string;
+  // Legacy: set by the retired background picker.
   backgroundThemeId?: string;
+  themeId?: ThemeId;
   darkMode?: boolean;
   agenda?: AgendaData;
   team?: TeamData;

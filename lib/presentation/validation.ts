@@ -12,6 +12,7 @@ import { isTeamData } from "@/lib/team/team-model";
 import { isTimelineData } from "@/lib/timeline/timeline-model";
 import { isTableCellRef, isTableData } from "@/lib/table/table-model";
 import { isTextBlockData } from "@/lib/text/text-block";
+import { isThemeId } from "@/lib/themes/deck-themes";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -149,6 +150,7 @@ function isSlide(value: unknown): value is Slide {
     isSolidHexColor(value.background) &&
     (value.backgroundThemeId === undefined ||
       typeof value.backgroundThemeId === "string") &&
+    (value.themeId === undefined || isThemeId(value.themeId)) &&
     (value.darkMode === undefined || typeof value.darkMode === "boolean") &&
     (value.agenda === undefined || isAgendaData(value.agenda)) &&
     (value.team === undefined || isTeamData(value.team)) &&

@@ -194,7 +194,7 @@ export function SlideLayoutPicker({
         onMouseDown={onClose}
       />
       <div
-        aria-label="Choose a slide layout"
+        aria-label="Choose a slide template"
         aria-modal="false"
         className="fixed bottom-3 left-[264px] top-3 z-40 flex w-[min(960px,calc(100vw-276px))] flex-col overflow-hidden rounded-[1.25rem] border border-stroke-01 bg-surface-01 shadow-popover outline-none"
         id="slide-layout-picker"
@@ -205,14 +205,14 @@ export function SlideLayoutPicker({
         <header className="flex shrink-0 items-center justify-between border-b border-stroke-01 p-3 pl-5">
           <div className="flex items-center gap-4">
             <div className="text-[15px] font-semibold tracking-[-0.02em] text-primary">
-              Layouts
+              Templates
             </div>
             <p className="text-[13px] text-muted-foreground">
               Choose how your next slide starts
             </p>
           </div>
           <Button
-            aria-label="Close slide layouts"
+            aria-label="Close templates"
             className="text-muted-foreground hover:text-primary"
             onClick={onClose}
             size="icon"
@@ -229,16 +229,16 @@ export function SlideLayoutPicker({
                 Add a new slide
               </h2>
               <p className="mt-1 text-[13px] text-muted-foreground">
-                Choose a blank canvas or a ready-made layout.
+                Choose a blank canvas or a ready-made template.
               </p>
             </div>
             <span className="shrink-0 rounded-lg bg-surface-03 px-2.5 py-1 text-xs font-medium text-muted-foreground">
-              {layoutCount} {layoutCount === 1 ? "layout" : "layouts"}
+              {layoutCount} {layoutCount === 1 ? "template" : "templates"}
             </span>
           </div>
 
           <div
-            aria-label="Filter layouts"
+            aria-label="Filter templates"
             className="mb-5 flex gap-1"
             role="group"
           >

@@ -51,9 +51,10 @@ import type { TextBlockLayoutUpdates, TextBlockTemplate } from "@/types/text-blo
 
 
 import {
-  applyBackgroundThemeToSlide,
-  type BackgroundThemeId,
-} from "@/lib/backgrounds/background-themes";
+  applyThemeToSlide,
+  reconcileSlideTheme,
+} from "@/lib/themes/apply-theme";
+import type { ThemeId } from "@/lib/themes/deck-themes";
 import {
   clampZoom,
   MAX_ZOOM,
@@ -77,10 +78,7 @@ import {
 } from "@/lib/slides/slide-utils";
 import { removeOrphanedCardParts } from "@/lib/elements/card-component";
 import { duplicateElementWithNewId } from "@/lib/elements/duplicate-element";
-import {
-  applyDarkModeToElement,
-  applyDarkModeToSlide,
-} from "@/lib/slides/dark-mode";
+import { applyDarkModeToElement } from "@/lib/slides/dark-mode";
 import {
   createSlideFromLayout,
   type SlideLayoutId,
@@ -132,15 +130,21 @@ interface EditorActions {
   openAgendaEditor: (slideId: string) => void;
   closeAgendaEditor: () => void;
   saveAgenda: (data: AgendaData, measure: MeasureAgendaText) => void;
+  // Applies agenda data from outside the form (the AI chat), as one undo step.
+  applyAgendaData: (slideId: string, data: AgendaData, measure: MeasureAgendaText) => void;
   selectTeamGraphic: (slideId: string) => void;
   openTeamEditor: (slideId: string) => void;
   closeTeamEditor: () => void;
   saveTeam: (data: TeamData, measure: MeasureTeamText) => void;
+  // Applies team data from outside the form (the AI chat), as one undo step.
+  applyTeamData: (slideId: string, data: TeamData, measure: MeasureTeamText) => void;
   beginInsertTimeline: (slideId: string) => void;
   selectTimelineGraphic: (slideId: string, timelineId: string) => void;
   openTimelineEditor: (slideId: string, timelineId: string) => void;
   closeTimelineEditor: () => void;
   saveTimeline: (data: TimelineData, measure: MeasureTimelineText) => void;
+  // Applies an existing timeline's data from outside the form (the AI chat).
+  applyTimelineData: (slideId: string, data: TimelineData, measure: MeasureTimelineText) => void;
   removeTimeline: (slideId: string, timelineId: string) => void;
   selectTableGraphic: (slideId: string) => void;
   resizeSlideTable: (slideId: string, rows: number, columns: number) => void;
@@ -163,10 +167,8 @@ interface EditorActions {
   selectElements: (elementIds: readonly string[]) => void;
   selectSlide: (slideId: string) => void;
   redo: () => void;
-  setSlideBackgroundTheme: (
-    slideId: string,
-    themeId: BackgroundThemeId,
-  ) => void;
+  setSlideTheme: (slideId: string, themeId: ThemeId) => void;
+  applyThemeToAllSlides: (themeId: ThemeId) => void;
   updatePresentationTitle: (title: string) => void;
   updateSlide: (
     slideId: string,
@@ -189,7 +191,6 @@ interface EditorActions {
   fitToWorkspace: (scale: number) => void;
   startTextEditing: (elementId: string) => void;
   stopTextEditing: () => void;
-  toggleSlideDarkMode: (slideId: string) => void;
   toggleLayoutGrid: () => void;
 }
 
@@ -256,6 +257,20 @@ function withDocumentHistory(
     changes.presentation === state.presentation
   ) {
     return changes;
+  }
+
+  // Elements added to a themed slide (inserted, pasted or regenerated from a
+  // form) pick up the slide's theme.
+  const previousSlides = new Set(state.presentation.slides);
+  let didReconcile = false;
+  const slides = changes.presentation.slides.map((slide) => {
+    if (previousSlides.has(slide) || !slide.themeId) return slide;
+    const reconciled = reconcileSlideTheme(slide);
+    didReconcile ||= reconciled !== slide;
+    return reconciled;
+  });
+  if (didReconcile) {
+    changes = { ...changes, presentation: { ...changes.presentation, slides } };
   }
 
   const undoStack = [
@@ -458,6 +473,23 @@ export function createEditorStore(
               selectedElementIds: elementId ? [elementId] : [],
             });
           }),
+        applyAgendaData: (slideId, data, measure) =>
+          set((state) => {
+            if (!isAgendaData(data) || Object.keys(getAgendaErrors(data, measure)).length > 0) return state;
+            const previous = state.presentation.slides.find((slide) => slide.id === slideId);
+            if (!previous?.agenda || previous.agenda.id !== data.id || previous.agenda.variant !== data.variant) return state;
+            const slide = createAgendaSlide(cloneAgenda(data), previous.id, measure, previous);
+            const slides = state.presentation.slides.map((item) => item.id === slide.id ? slide : item);
+            const elementId = getAgendaGraphicSelectionId(slide);
+            return withDocumentHistory(state, {
+              presentation: { ...state.presentation, slides },
+              activeSlideId: slide.id,
+              agendaEditor: null,
+              editingTextId: null,
+              editingTextSelectAll: false,
+              selectedElementIds: elementId ? [elementId] : [],
+            });
+          }),
         selectTeamGraphic: (slideId) =>
           set((state) => {
             if (slideId !== state.activeSlideId) return state;
@@ -497,6 +529,23 @@ export function createEditorStore(
             const session = state.teamEditor;
             if (!session || !isTeamData(data) || Object.keys(getTeamErrors(data, measure)).length > 0) return state;
             const previous = state.presentation.slides.find((slide) => slide.id === session.slideId);
+            if (!previous?.team || previous.team.id !== data.id || previous.team.variant !== data.variant) return state;
+            const slide = createTeamSlide(cloneTeam(data), previous.id, measure, previous);
+            const slides = state.presentation.slides.map((item) => item.id === slide.id ? slide : item);
+            const elementId = getTeamGraphicSelectionId(slide);
+            return withDocumentHistory(state, {
+              presentation: { ...state.presentation, slides },
+              activeSlideId: slide.id,
+              teamEditor: null,
+              editingTextId: null,
+              editingTextSelectAll: false,
+              selectedElementIds: elementId ? [elementId] : [],
+            });
+          }),
+        applyTeamData: (slideId, data, measure) =>
+          set((state) => {
+            if (!isTeamData(data) || Object.keys(getTeamErrors(data, measure)).length > 0) return state;
+            const previous = state.presentation.slides.find((slide) => slide.id === slideId);
             if (!previous?.team || previous.team.id !== data.id || previous.team.variant !== data.variant) return state;
             const slide = createTeamSlide(cloneTeam(data), previous.id, measure, previous);
             const slides = state.presentation.slides.map((item) => item.id === slide.id ? slide : item);
@@ -572,6 +621,24 @@ export function createEditorStore(
             if (session.timelineId) {
               if (!existing || existing.id !== data.id || existing.variant !== data.variant || existing.placement !== data.placement) return state;
             } else if (data.placement !== "component" || previous.timelines?.some((timeline) => timeline.id === data.id)) return state;
+            const slide = createDynamicTimelineSlide(cloneTimeline(data), previous.id, measure, previous);
+            const slides = state.presentation.slides.map((item) => item.id === slide.id ? slide : item);
+            const elementId = getTimelineGraphicSelectionId(slide, data.id);
+            return withDocumentHistory(state, {
+              presentation: { ...state.presentation, slides },
+              activeSlideId: slide.id,
+              timelineEditor: null,
+              editingTextId: null,
+              editingTextSelectAll: false,
+              selectedElementIds: elementId ? [elementId] : [],
+            });
+          }),
+        applyTimelineData: (slideId, data, measure) =>
+          set((state) => {
+            if (!isTimelineData(data) || Object.keys(getDynamicTimelineErrors(data, measure)).length > 0) return state;
+            const previous = state.presentation.slides.find((slide) => slide.id === slideId);
+            const existing = previous?.timelines?.find((timeline) => timeline.id === data.id);
+            if (!previous || !existing || existing.variant !== data.variant || existing.placement !== data.placement) return state;
             const slide = createDynamicTimelineSlide(cloneTimeline(data), previous.id, measure, previous);
             const slides = state.presentation.slides.map((item) => item.id === slide.id ? slide : item);
             const elementId = getTimelineGraphicSelectionId(slide, data.id);
@@ -832,7 +899,7 @@ export function createEditorStore(
                 .map((element) => element.id),
             };
           }),
-        setSlideBackgroundTheme: (slideId, themeId) =>
+        setSlideTheme: (slideId, themeId) =>
           set((state) => {
             let didUpdate = false;
             const slides = state.presentation.slides.map((slide) => {
@@ -841,10 +908,7 @@ export function createEditorStore(
               }
 
               didUpdate = true;
-              const themedSlide = applyBackgroundThemeToSlide(slide, themeId);
-              return slide.darkMode
-                ? applyDarkModeToSlide(themedSlide, true)
-                : themedSlide;
+              return applyThemeToSlide(slide, themeId);
             });
 
             return didUpdate
@@ -853,6 +917,17 @@ export function createEditorStore(
                 })
               : state;
           }),
+        applyThemeToAllSlides: (themeId) =>
+          set((state) =>
+            withDocumentHistory(state, {
+              presentation: {
+                ...state.presentation,
+                slides: state.presentation.slides.map((slide) =>
+                  applyThemeToSlide(slide, themeId),
+                ),
+              },
+            }),
+          ),
         undo: () =>
           set((state) => {
             const previous = state.undoStack.at(-1);
@@ -1062,25 +1137,6 @@ export function createEditorStore(
                 })
               : state;
           }),
-        toggleSlideDarkMode: (slideId) =>
-          set((state) => {
-            let didUpdate = false;
-            const slides = state.presentation.slides.map((slide) => {
-              if (slide.id !== slideId) {
-                return slide;
-              }
-
-              didUpdate = true;
-              const updated = applyDarkModeToSlide(slide, !slide.darkMode);
-              return slide.table ? updateTableSlide(updated, slide.table) : updated;
-            });
-
-            return didUpdate
-              ? withDocumentHistory(state, {
-                  presentation: { ...state.presentation, slides },
-                })
-              : state;
-          }),
         updateSlideBackground: (slideId, color) => {
           if (!isSolidHexColor(color)) {
             return;
@@ -1092,7 +1148,7 @@ export function createEditorStore(
                 ...state.presentation,
                 slides: state.presentation.slides.map((slide) =>
                   slide.id === slideId
-                    ? { ...slide, background: color.toUpperCase() }
+                    ? { ...slide, background: color.toUpperCase(), themeId: undefined }
                     : slide,
                 ),
               },

@@ -1,6 +1,6 @@
 "use client";
 
-import { Grid3x3, Maximize2, Minus, Moon, Plus } from "lucide-react";
+import { Grid3x3, Maximize2, Minus, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { SwitchIndicator } from "@/components/ui/switch";
@@ -36,15 +36,6 @@ export function ZoomControls({ fitScale }: ZoomControlsProps) {
   const zoomIn = useEditorStore((state) => state.zoomIn);
   const zoomOut = useEditorStore((state) => state.zoomOut);
   const fitToWorkspace = useEditorStore((state) => state.fitToWorkspace);
-  const activeSlideId = useEditorStore((state) => state.activeSlideId);
-  const isDarkMode = useEditorStore(
-    (state) =>
-      state.presentation.slides.find((slide) => slide.id === activeSlideId)
-        ?.darkMode === true,
-  );
-  const toggleSlideDarkMode = useEditorStore(
-    (state) => state.toggleSlideDarkMode,
-  );
   const showLayoutGrid = useEditorStore((state) => state.showLayoutGrid);
   const toggleLayoutGrid = useEditorStore((state) => state.toggleLayoutGrid);
   const percentage = Math.round(zoom * 100);
@@ -97,28 +88,6 @@ export function ZoomControls({ fitScale }: ZoomControlsProps) {
       </Tooltip>
 
       <div className="mx-1 h-5 w-px bg-stroke-01" />
-
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            aria-checked={isDarkMode}
-            className="group flex h-8 cursor-pointer items-center gap-2 rounded-lg px-2.5 text-xs font-medium text-primary outline-none transition hover:bg-surface-03 focus-visible:ring-2 focus-visible:ring-ring/35 disabled:pointer-events-none disabled:opacity-40"
-            disabled={!activeSlideId}
-            onClick={() => toggleSlideDarkMode(activeSlideId)}
-            role="switch"
-            type="button"
-          >
-            <Moon className="size-3.5" strokeWidth={1.8} />
-            Dark
-            <SwitchIndicator checked={isDarkMode} />
-          </button>
-        </TooltipTrigger>
-        <TooltipContent>
-          {isDarkMode
-            ? "Switch slide text back to black"
-            : "Switch slide text to white"}
-        </TooltipContent>
-      </Tooltip>
 
       <Tooltip>
         <TooltipTrigger asChild>

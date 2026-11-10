@@ -1,5 +1,6 @@
 import { gridWidth, gridX, gridY } from "@/lib/layouts/layout-grid";
 import { createLayoutText } from "@/lib/layouts/layout-text";
+import { resolve3dFile, WKND_3D_SOURCE_SIZE } from "@/lib/themes/deck-themes";
 import type {
   ImageElement,
   ShapeElement,
@@ -20,9 +21,6 @@ export const WKND_COLORS = {
 const PEOPLE_DIR = "/assets/img-people";
 const PEOPLE_PHOTO_WIDTH = 189;
 const PEOPLE_PHOTO_HEIGHT = 235;
-// Square 3D brand objects, exported from Figma at 1254×1254.
-export const WKND_3D_DIR = "/assets/3d-logo-wknd";
-export const WKND_3D_SOURCE_SIZE = 1254;
 // The QA iPhone render, with its screen content baked in.
 const PHONE_MOCKUP_SRC = "/assets/mockup-iphone/QA/Phone%20Mockup.png";
 export const PHONE_MOCKUP_SOURCE = { width: 360, height: 740 } as const;
@@ -176,7 +174,7 @@ export function createLayoutObject({
     opacity: 1,
     locked: false,
     visible: true,
-    src: `${WKND_3D_DIR}/${file}`,
+    src: resolve3dFile(file),
     originalWidth: WKND_3D_SOURCE_SIZE,
     originalHeight: WKND_3D_SOURCE_SIZE,
     cornerRadius: 0,

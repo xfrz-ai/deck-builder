@@ -8,6 +8,10 @@ import { normalizeTimelinePresentation } from "@/lib/timeline/timeline-ownership
 import { normalizeTablePresentation } from "@/lib/table/table-migration";
 import { reflowTextBlockPresentation } from "@/lib/text/text-block";
 import { isPresentation } from "@/lib/presentation/validation";
+import {
+  migrateLegacy3dSrc,
+  WKND_3D_SOURCE_SIZE,
+} from "@/lib/themes/deck-themes";
 import type { Presentation } from "@/types/presentation";
 
 export const EDITOR_STORAGE_KEY = "presentation-editor-storage";
@@ -62,6 +66,37 @@ function migrateEditableTemplateAssets(
   return didChange ? { ...presentation, slides } : presentation;
 }
 
+// Points 3D objects from the retired 3d-logo-wknd set at the matching
+// 3d-wknd asset.
+function migrateLegacy3dAssets(presentation: Presentation): Presentation {
+  let didChange = false;
+  const slides = presentation.slides.map((slide) => {
+    let didChangeSlide = false;
+    const elements = slide.elements.map((element) => {
+      if (element.type !== "image") return element;
+      const src = migrateLegacy3dSrc(element.src);
+      const baseSrc = element.themeBase?.src
+        ? migrateLegacy3dSrc(element.themeBase.src)
+        : null;
+      if (!src && !baseSrc) return element;
+
+      didChange = true;
+      didChangeSlide = true;
+      return {
+        ...element,
+        src: src ?? element.src,
+        originalWidth: WKND_3D_SOURCE_SIZE,
+        originalHeight: WKND_3D_SOURCE_SIZE,
+        ...(baseSrc ? { themeBase: { ...element.themeBase, src: baseSrc } } : {}),
+      };
+    });
+
+    return didChangeSlide ? { ...slide, elements } : slide;
+  });
+
+  return didChange ? { ...presentation, slides } : presentation;
+}
+
 export function normalizePersistedEditorState(
   value: unknown,
   fallbackPresentation: Presentation,
@@ -78,7 +113,7 @@ export function normalizePersistedEditorState(
     };
   }
 
-  const presentation = migrateEditableTemplateAssets(reflowTextBlockPresentation(normalizeTablePresentation(normalizeTimelinePresentation(normalizeTeamPresentation(normalizeAgendaPresentation(value.presentation))))));
+  const presentation = migrateLegacy3dAssets(migrateEditableTemplateAssets(reflowTextBlockPresentation(normalizeTablePresentation(normalizeTimelinePresentation(normalizeTeamPresentation(normalizeAgendaPresentation(value.presentation)))))));
   const activeSlideId =
     "activeSlideId" in value && typeof value.activeSlideId === "string"
       ? value.activeSlideId

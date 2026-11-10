@@ -5,6 +5,7 @@ import { useSyncExternalStore } from "react";
 
 import { CanvasWorkspace } from "@/components/editor/canvas-workspace";
 import { AgendaEditorDialog } from "@/components/editor/agenda-editor-dialog";
+import { AiChatPanel } from "@/components/editor/ai-chat-panel";
 import { TeamEditorDialog } from "@/components/editor/team-editor-dialog";
 import { TimelineEditorDialog } from "@/components/editor/timeline-editor-dialog";
 import { EditorKeyboardShortcuts } from "@/components/editor/editor-keyboard-shortcuts";
@@ -72,6 +73,7 @@ export function EditorShell() {
         <CanvasWorkspace />
         <SlideSidebar />
         <PropertiesPanel />
+        <AiChatPanel />
         {agendaEditor ? <AgendaEditorDialog key={agendaEditor.initialData.id} session={agendaEditor} /> : null}
         {teamEditor ? <TeamEditorDialog key={teamEditor.initialData.id} session={teamEditor} /> : null}
         {timelineEditor ? <TimelineEditorDialog key={timelineEditor.initialData.id} session={timelineEditor} /> : null}

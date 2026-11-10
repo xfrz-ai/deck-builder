@@ -1,9 +1,6 @@
 import { createFrameElements } from "@/lib/backgrounds/background-themes";
 import type { SlideLayoutDefinition } from "@/lib/layouts/layout-definition";
-import {
-  WKND_3D_DIR,
-  WKND_3D_SOURCE_SIZE,
-} from "@/lib/layouts/layout-elements";
+import { resolve3dFile, WKND_3D_SOURCE_SIZE } from "@/lib/themes/deck-themes";
 import { gridWidth, gridX, gridY } from "@/lib/layouts/layout-grid";
 import { createLayoutText } from "@/lib/layouts/layout-text";
 import type {
@@ -73,7 +70,7 @@ function createObject(id: string, src: string, x: number): ImageElement {
     opacity: 1,
     locked: false,
     visible: true,
-    src: `${WKND_3D_DIR}/${src}`,
+    src: resolve3dFile(src),
     originalWidth: WKND_3D_SOURCE_SIZE,
     originalHeight: WKND_3D_SOURCE_SIZE,
     cornerRadius: 0,

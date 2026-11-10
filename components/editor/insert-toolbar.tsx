@@ -15,7 +15,7 @@ import {
 import { type ComponentProps, useCallback, useRef, useState } from "react";
 
 import { TextTemplatePicker } from "@/components/editor/text-template-picker";
-import { BackgroundPicker } from "@/components/editor/background-picker";
+import { ThemePicker } from "@/components/editor/theme-picker";
 import { ImageGridPicker } from "@/components/editor/image-grid-picker";
 import { MockupDialog } from "@/components/editor/mockup-dialog";
 import { ScopeOfWorkGeneratorDialog } from "@/components/editor/scope-of-work-generator-dialog";
@@ -47,6 +47,8 @@ import { IMAGE_FILE_ACCEPT, loadImageFile } from "@/lib/image/image-file";
 import { useEditorStore } from "@/store/editor-store";
 
 const SHOW_TIMELINE_AND_SCOPE_TOOLS = false;
+// Hidden for now; set to true to bring the Img Grid and Shape tools back.
+const SHOW_IMAGE_GRID_AND_SHAPE_TOOLS = false;
 
 function ToolButton({
   caption,
@@ -159,42 +161,46 @@ export function InsertToolbar() {
         ref={fileInputRef}
         type="file"
       />
-      <ImageGridPicker />
-      <DropdownMenu>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <DropdownMenuTrigger asChild>
-              <Button aria-label="Insert shape" size="tool" variant="ghost">
-                <Shapes className="size-[18px]" strokeWidth={1.8} />
-                Shape
-              </Button>
-            </DropdownMenuTrigger>
-          </TooltipTrigger>
-          <TooltipContent>Insert shape</TooltipContent>
-        </Tooltip>
-        <DropdownMenuContent align="center" sideOffset={14}>
-          <DropdownMenuItem
-            onSelect={() => addElement(activeSlideId, createRectangleElement())}
-          >
-            <RectangleHorizontal className="size-4" strokeWidth={1.8} />
-            Rectangle
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onSelect={() =>
-              addElement(activeSlideId, createRoundedRectangleElement())
-            }
-          >
-            <Square className="size-4" strokeWidth={1.8} />
-            Rounded Rectangle
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onSelect={() => addElement(activeSlideId, createCircleElement())}
-          >
-            <Circle className="size-4" strokeWidth={1.8} />
-            Circle
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      {SHOW_IMAGE_GRID_AND_SHAPE_TOOLS ? (
+        <>
+          <ImageGridPicker />
+          <DropdownMenu>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DropdownMenuTrigger asChild>
+                  <Button aria-label="Insert shape" size="tool" variant="ghost">
+                    <Shapes className="size-[18px]" strokeWidth={1.8} />
+                    Shape
+                  </Button>
+                </DropdownMenuTrigger>
+              </TooltipTrigger>
+              <TooltipContent>Insert shape</TooltipContent>
+            </Tooltip>
+            <DropdownMenuContent align="center" sideOffset={14}>
+              <DropdownMenuItem
+                onSelect={() => addElement(activeSlideId, createRectangleElement())}
+              >
+                <RectangleHorizontal className="size-4" strokeWidth={1.8} />
+                Rectangle
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() =>
+                  addElement(activeSlideId, createRoundedRectangleElement())
+                }
+              >
+                <Square className="size-4" strokeWidth={1.8} />
+                Rounded Rectangle
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => addElement(activeSlideId, createCircleElement())}
+              >
+                <Circle className="size-4" strokeWidth={1.8} />
+                Circle
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </>
+      ) : null}
       <DropdownMenu>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -253,7 +259,7 @@ export function InsertToolbar() {
         <Smartphone className="size-[18px]" strokeWidth={1.8} />
       </ToolButton>
       {isMockupOpen ? <MockupDialog onClose={closeMockup} /> : null}
-      <BackgroundPicker />
+      <ThemePicker />
     </div>
   );
 }

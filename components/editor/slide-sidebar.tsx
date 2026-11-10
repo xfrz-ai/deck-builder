@@ -14,7 +14,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { ArrowLeft, PanelTop, Plus } from "lucide-react";
+import { ArrowLeft, LayoutTemplate, PanelTop } from "lucide-react";
 import {
   type KeyboardEvent,
   useCallback,
@@ -172,12 +172,12 @@ export function SlideSidebar() {
         <Button
           aria-controls="slide-layout-picker"
           aria-expanded={isLayoutPickerOpen}
-          aria-label="Add slide"
+          aria-label="Browse templates"
           className="w-full"
           onClick={() => setIsLayoutPickerOpen((isOpen) => !isOpen)}
         >
-          <Plus className="size-4" strokeWidth={2} />
-          Add slide
+          <LayoutTemplate className="size-4" strokeWidth={2} />
+          Browse templates
         </Button>
       </div>
 

@@ -1,8 +1,6 @@
-import { duplicateElementWithNewId } from "@/lib/elements/duplicate-element";
 import type {
   ImageElement,
   ShapeElement,
-  Slide,
   SlideElement,
   TextElement,
 } from "@/types/presentation";
@@ -10,13 +8,6 @@ import type {
 const FONT_FAMILY = "Plus Jakarta Sans";
 const TEXT_COLOR = "#111111";
 const LIGHT_TEXT_COLOR = "#FFFFFF";
-
-interface BackgroundThemeDefinition {
-  background: string;
-  elements: SlideElement[];
-  id: string;
-  name: string;
-}
 
 type BackgroundTextInput = Pick<
   TextElement,
@@ -153,72 +144,4 @@ export function createFrameElements(
       originalHeight: 90,
     }),
   ];
-}
-
-export const BACKGROUND_THEMES = [
-  {
-    id: "wknd-yellow-w",
-    name: "Yellow W",
-    background: "#FFFFFF",
-    elements: [
-      createBackgroundImage({
-        id: "wknd-yellow-w-decoration",
-        x: 0,
-        y: 0,
-        width: 1384,
-        height: 1080,
-        src: "/assets/3d%20logo%20wknd/3d-w-large%20for%20bg.png",
-        originalWidth: 1384,
-        originalHeight: 1080,
-      }),
-      ...createFrameElements("wknd-yellow-w"),
-    ],
-  },
-] as const satisfies readonly BackgroundThemeDefinition[];
-
-export type BackgroundThemeId = (typeof BACKGROUND_THEMES)[number]["id"];
-
-export function getBackgroundTheme(themeId: BackgroundThemeId) {
-  const theme = BACKGROUND_THEMES.find((item) => item.id === themeId);
-
-  if (!theme) {
-    throw new Error(`Unknown background theme: ${themeId}`);
-  }
-
-  return theme;
-}
-
-export function createBackgroundThemeElements(themeId: BackgroundThemeId) {
-  const theme = getBackgroundTheme(themeId);
-
-  return theme.elements.map((element) => duplicateElementWithNewId(element, 0));
-}
-
-export function applyBackgroundThemeToSlide(
-  slide: Slide,
-  themeId: BackgroundThemeId,
-): Slide {
-  const theme = getBackgroundTheme(themeId);
-
-  const contentElements = slide.elements.filter(
-    (element) => element.role !== "background",
-  );
-
-  return {
-    ...slide,
-    background: theme.background,
-    backgroundThemeId: theme.id,
-    elements: [...createBackgroundThemeElements(theme.id), ...contentElements],
-  };
-}
-
-export function createBackgroundPreviewSlide(
-  theme: (typeof BACKGROUND_THEMES)[number],
-): Slide {
-  return {
-    id: `background-preview-${theme.id}`,
-    background: theme.background,
-    backgroundThemeId: theme.id,
-    elements: [...theme.elements],
-  };
 }

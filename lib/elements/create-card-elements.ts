@@ -3,10 +3,7 @@ import {
   layoutCardParts,
 } from "@/lib/elements/card-component";
 import { createUniqueId } from "@/lib/id";
-import {
-  WKND_3D_DIR,
-  WKND_3D_SOURCE_SIZE,
-} from "@/lib/layouts/layout-elements";
+import { resolve3dFile, WKND_3D_SOURCE_SIZE } from "@/lib/themes/deck-themes";
 import { gridWidth, gridX, LAYOUT_GRID } from "@/lib/layouts/layout-grid";
 import { createLayoutText } from "@/lib/layouts/layout-text";
 import type {
@@ -21,7 +18,7 @@ export type CardGridColumns = 2 | 3 | 4;
 const CARD_PLACEHOLDER_SRC = "/assets/card-placeholder.png";
 const CARD_PLACEHOLDER_WIDTH = 1200;
 const CARD_PLACEHOLDER_HEIGHT = 900;
-const CARD_ICON_SRC = `${WKND_3D_DIR}/3d-stars.png`;
+const CARD_ICON_SRC = resolve3dFile("3d-stars.png");
 const CARD_ICON_SIZE = 64;
 const CARD_ICON_ORIGINAL_SIZE = WKND_3D_SOURCE_SIZE;
 const CARD_BACKGROUND_FILL = CARD_BACKGROUND_COLORS[0].fill;

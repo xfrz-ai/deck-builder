@@ -1,4 +1,4 @@
-import type { Slide, SlideElement } from "@/types/presentation";
+import type { SlideElement } from "@/types/presentation";
 
 const DARK_TEXT_COLORS = new Set(["#111111", "#000000"]);
 const LIGHT_MODE_TEXT_COLOR = "#111111";
@@ -37,19 +37,4 @@ export function applyDarkModeToElement(
   }
 
   return element;
-}
-
-export function applyDarkModeToSlide(slide: Slide, darkMode: boolean): Slide {
-  return {
-    ...slide,
-    darkMode,
-    textBlocks: slide.textBlocks?.map((block) => ({
-      ...block,
-      title: { ...block.title, color: swapColor(block.title.color, darkMode) },
-      ...(block.body ? { body: { ...block.body, color: swapColor(block.body.color, darkMode) } } : {}),
-    })),
-    elements: slide.elements.map((element) =>
-      applyDarkModeToElement(element, darkMode),
-    ),
-  };
 }

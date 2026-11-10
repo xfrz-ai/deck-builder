@@ -14,6 +14,9 @@ import { notifyEditor } from "@/lib/editor/notifications";
 import { exportPresentationToPptx } from "@/lib/export/pptx-export";
 import { useEditorStore } from "@/store/editor-store";
 
+// Hidden for now; undo/redo still work with Cmd/Ctrl+Z and Cmd/Ctrl+Shift+Z.
+const SHOW_UNDO_REDO_BUTTONS = false;
+
 interface DisabledControlProps {
   label: string;
   children: ReactNode;
@@ -67,38 +70,40 @@ export function TopBar() {
     >
       <InsertToolbar />
 
-      <div className="flex items-center gap-1 p-2">
-        <DisabledControl
-          label={canUndo ? "Undo (Ctrl/Cmd + Z)" : "Nothing to undo"}
-        >
-          <Button
-            aria-label="Undo"
-            disabled={!canUndo}
-            onClick={undo}
-            size="tool"
-            variant="ghost"
+      {SHOW_UNDO_REDO_BUTTONS ? (
+        <div className="flex items-center gap-1 p-2">
+          <DisabledControl
+            label={canUndo ? "Undo (Ctrl/Cmd + Z)" : "Nothing to undo"}
           >
-            <Undo2 className="size-[18px]" strokeWidth={1.8} />
-            Undo
-          </Button>
-        </DisabledControl>
-        <DisabledControl
-          label={
-            canRedo ? "Redo (Ctrl/Cmd + Shift + Z)" : "Nothing to redo"
-          }
-        >
-          <Button
-            aria-label="Redo"
-            disabled={!canRedo}
-            onClick={redo}
-            size="tool"
-            variant="ghost"
+            <Button
+              aria-label="Undo"
+              disabled={!canUndo}
+              onClick={undo}
+              size="tool"
+              variant="ghost"
+            >
+              <Undo2 className="size-[18px]" strokeWidth={1.8} />
+              Undo
+            </Button>
+          </DisabledControl>
+          <DisabledControl
+            label={
+              canRedo ? "Redo (Ctrl/Cmd + Shift + Z)" : "Nothing to redo"
+            }
           >
-            <Redo2 className="size-[18px]" strokeWidth={1.8} />
-            Redo
-          </Button>
-        </DisabledControl>
-      </div>
+            <Button
+              aria-label="Redo"
+              disabled={!canRedo}
+              onClick={redo}
+              size="tool"
+              variant="ghost"
+            >
+              <Redo2 className="size-[18px]" strokeWidth={1.8} />
+              Redo
+            </Button>
+          </DisabledControl>
+        </div>
+      ) : null}
 
       <div className="p-2">
         <Button

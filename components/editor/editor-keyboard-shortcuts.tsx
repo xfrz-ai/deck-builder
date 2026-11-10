@@ -10,6 +10,7 @@ import {
 } from "@/lib/editor/element-clipboard";
 import { createTextElement } from "@/lib/elements/create-element";
 import { applyDarkModeToElement } from "@/lib/slides/dark-mode";
+import { stripThemeBase } from "@/lib/themes/apply-theme";
 import { useEditorStore } from "@/store/editor-store";
 import type { SlideElement } from "@/types/presentation";
 
@@ -133,10 +134,11 @@ export function EditorKeyboardShortcuts() {
         activeSlideId === clipboard.sourceSlideId ? count + 1 : count;
       clipboard.pasteCounts.set(activeSlideId, count + 1);
 
+      // Pasted elements are themed afresh for the slide they land on.
       const elements = cloneElementsForPaste(
         clipboard.elements,
         steps * PASTE_OFFSET,
-      );
+      ).map(stripThemeBase);
       // addElements already lightens text for dark slides; undo that when
       // the copy came from one.
       addElements(
