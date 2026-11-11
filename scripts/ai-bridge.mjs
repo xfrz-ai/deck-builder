@@ -16,7 +16,9 @@ import { join } from "node:path";
 const PORT = Number(process.env.AI_BRIDGE_PORT ?? 8787);
 const MODEL = process.env.AI_BRIDGE_MODEL;
 const TIMEOUT_MS = 180_000;
-const MAX_BODY_BYTES = 1_000_000;
+// A whole deck is a much longer answer than one slide.
+const DECK_TIMEOUT_MS = 600_000;
+const MAX_BODY_BYTES = 2_000_000;
 const ALLOWED_ORIGIN = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
 
 // Claude runs in an empty folder so it never sees or touches this project.
@@ -78,6 +80,54 @@ Timeline rules:
 ${SHARED_RULES}`,
 };
 
+const DECK_PROMPT = `You turn a source document into a Weekend (WKND) branded presentation, written as a deck spec for a deck builder.
+
+The source is either Markdown or the text extracted from a PowerPoint file. PowerPoint text is listed per slide in reading order with its font size, e.g. "[31pt] Title". The largest text is usually the slide title and small uppercase text above it is usually an eyebrow label. "Notes:" are the speaker notes.
+
+The catalog lists every layout you may use: its purpose, its content fields with item counts and estimated maxChars / maxLines, and an example. Layouts own all positions, colors and fonts; you only choose a layout per slide and fill its fields.
+
+Rules:
+- Use only layout ids and fields from the catalog. Match every list's item count exactly (minItems–maxItems).
+- Text must fit. Treat maxChars as a hard ceiling and aim for about 85% of it. WKND titles are short and punchy: when a source title is too long, shorten it and move the rest into the subtitle or intro. Use "\\n" in titles to break lines on purpose.
+- Keep the language of the source text. Mixed English and Indonesian stays mixed.
+- Keep placeholders such as [Nama Klien], [TBD] or Rp [TBD] exactly as written. Never invent names, numbers, prices, dates, clients or testimonials.
+- Leave image fields out; placeholder photos are used.
+- Production notes in the source (e.g. "Fungsi", "Arahan visual", "Catatan", "Presenter cue", checklists, durations) are instructions, never slide content. Use "Arahan visual" and similar hints to choose layouts.
+- Timeline layouts need dates. When the source only gives weeks or durations, start on the Monday after <today> and use periodFormat "weeks", so only relative weeks are shown.
+- Vary the layouts: never use the same layout on two consecutive slides, and use any layout at most three times.
+- Speaker notes are not supported; use them only to understand a slide.
+
+Modes:
+- "restyle": keep the source's slides, order and wording. Shorten only what does not fit. A source slide whose content has no fitting layout is mapped to the closest layout, split, or left out; say which in notes.
+- "rewrite": you may restructure and condense into the strongest story, usually 12–20 slides, opening with a cover and closing with wknd-questions or wknd-thank-you. Keep the facts and placeholders of the source.
+
+Respond with only one JSON object, no markdown fences:
+{"notes": string[], "spec": {"version": 1, "title": string, "footer"?: {"left"?: string, "note"?: string}, "slides": [{"layout": string, "content": object}]}}
+
+notes: 3–10 short lines for the person importing the deck, in the main language of the source: which source slides were merged, split or left out, which titles were shortened, and what they should fill in.
+
+When <errors> are given, you receive your previous spec and the problems the deck builder found. Fix exactly those problems and respond with only the slides you changed, keyed by their index in slides:
+{"notes": string[], "slides": {"<index>": {"layout": string, "content": object}}}`;
+
+function buildDeckPrompt({ source, mode, catalog, today, spec, errors }) {
+  const parts = [
+    `<today>\n${today}\n</today>`,
+    `<catalog>\n${JSON.stringify(catalog)}\n</catalog>`,
+  ];
+  if (spec && Array.isArray(errors) && errors.length > 0) {
+    parts.push(
+      `<previous_spec>\n${JSON.stringify(spec, null, 2)}\n</previous_spec>`,
+      `<errors>\nThe deck builder found these problems:\n${errors.map((error) => `- ${error}`).join("\n")}\n</errors>`,
+    );
+  } else {
+    parts.push(
+      `<mode>\n${mode === "rewrite" ? "rewrite" : "restyle"}\n</mode>`,
+      `<source name="${String(source.name).replace(/"/g, "")}" kind="${source.kind}">\n${source.text}\n</source>`,
+    );
+  }
+  return parts.join("\n\n");
+}
+
 function buildPrompt({ instruction, history, data, previousAttempt, errors }) {
   const parts = [`<current_content>\n${JSON.stringify(data, null, 2)}\n</current_content>`];
   if (Array.isArray(history) && history.length > 0) {
@@ -102,7 +152,7 @@ function extractJson(text) {
   return JSON.parse(text.slice(start, end + 1));
 }
 
-function runClaude(systemPrompt, prompt) {
+function runClaude(systemPrompt, prompt, timeoutMs = TIMEOUT_MS) {
   const args = [
     "-p",
     "--output-format", "json",
@@ -124,7 +174,7 @@ function runClaude(systemPrompt, prompt) {
     const timer = setTimeout(() => {
       child.kill("SIGTERM");
       reject(new Error("Claude took too long to answer."));
-    }, TIMEOUT_MS);
+    }, timeoutMs);
 
     child.stdout.on("data", (chunk) => { stdout += chunk; });
     child.stderr.on("data", (chunk) => { stderr += chunk; });
@@ -195,6 +245,30 @@ const server = createServer(async (request, response) => {
     response.end();
     return;
   }
+  if (request.method === "POST" && request.url === "/api/deck") {
+    try {
+      const payload = JSON.parse(await readBody(request));
+      const isFix = Array.isArray(payload.errors) && payload.errors.length > 0;
+      if (typeof payload.catalog !== "object" || (!isFix && (typeof payload.source?.text !== "string" || !payload.source.text.trim()))) {
+        send(response, 400, { error: "catalog and source are required." });
+        return;
+      }
+      console.log(isFix
+        ? `→ [deck] fixing ${payload.errors.length} problem(s)`
+        : `→ [deck] ${payload.mode ?? "restyle"} ${payload.source.name} (${payload.source.text.length} chars)`);
+      const result = extractJson(await runClaude(DECK_PROMPT, buildDeckPrompt(payload), DECK_TIMEOUT_MS));
+      send(response, 200, {
+        notes: Array.isArray(result.notes) ? result.notes.filter((note) => typeof note === "string") : [],
+        spec: result.spec ?? null,
+        slides: result.slides ?? null,
+      });
+    } catch (error) {
+      console.error(`  ✗ ${error.message}`);
+      send(response, 500, { error: error.message });
+    }
+    return;
+  }
+
   if (request.method !== "POST" || request.url !== "/api/slide-chat") {
     send(response, 404, { error: "Not found." });
     return;

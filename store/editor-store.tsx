@@ -155,6 +155,8 @@ interface EditorActions {
   addElements: (slideId: string, elements: readonly SlideElement[]) => void;
   addLayoutSlide: (layoutId: SlideLayoutId) => void;
   addSlide: () => void;
+  // Replaces the deck, or appends its slides, as one undo step.
+  importDeck: (presentation: Presentation, mode: "replace" | "append") => void;
   clearSelection: () => void;
   deleteElement: (slideId: string, elementId: string) => void;
   deleteElements: (slideId: string, elementIds: readonly string[]) => void;
@@ -743,6 +745,23 @@ export function createEditorStore(
             return withDocumentHistory(state, {
               presentation: { ...state.presentation, slides },
               activeSlideId: slide.id,
+              editingTextId: null,
+              editingTextSelectAll: false,
+              selectedElementIds: [],
+            });
+          }),
+        importDeck: (presentation, mode) =>
+          set((state) => {
+            const first = presentation.slides[0];
+            if (!first) return state;
+            return withDocumentHistory(state, {
+              presentation: mode === "replace"
+                ? { ...state.presentation, title: presentation.title, slides: presentation.slides }
+                : { ...state.presentation, slides: [...state.presentation.slides, ...presentation.slides] },
+              activeSlideId: first.id,
+              agendaEditor: null,
+              teamEditor: null,
+              timelineEditor: null,
               editingTextId: null,
               editingTextSelectAll: false,
               selectedElementIds: [],

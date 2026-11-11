@@ -2,6 +2,11 @@
 export const AI_BRIDGE_URL =
   process.env.NEXT_PUBLIC_AI_BRIDGE_URL ?? "http://127.0.0.1:8787";
 
+// The bridge only exists on your machine, so AI features are dev-only unless
+// a bridge URL is configured explicitly.
+export const AI_BRIDGE_ENABLED =
+  process.env.NODE_ENV === "development" || Boolean(process.env.NEXT_PUBLIC_AI_BRIDGE_URL);
+
 export type SlideChatKind = "team" | "agenda" | "timeline";
 
 export interface ChatTurn {
@@ -45,29 +50,60 @@ export function describeErrors(labels: ReadonlyMap<string, string>, errors: Reco
   });
 }
 
-export async function requestSlideEdit(
-  request: SlideChatRequest,
-  signal?: AbortSignal,
-): Promise<SlideChatResponse> {
+async function postToBridge(path: string, body: unknown, signal?: AbortSignal) {
   let response: Response;
   try {
-    response = await fetch(`${AI_BRIDGE_URL}/api/slide-chat`, {
+    response = await fetch(`${AI_BRIDGE_URL}${path}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(request),
+      body: JSON.stringify(body),
       signal,
     });
   } catch (error) {
     if (signal?.aborted) throw error;
     throw new Error("The AI bridge isn't running. Start it with `npm run ai-bridge` in a separate terminal.");
   }
-
-  const body = (await response.json().catch(() => null)) as
-    | { reply?: unknown; data?: unknown; error?: unknown }
-    | null;
-  if (!response.ok || !body) {
-    throw new Error(typeof body?.error === "string" ? body.error : `AI bridge error (${response.status}).`);
+  const result = (await response.json().catch(() => null)) as Record<string, unknown> | null;
+  if (response.status === 404) {
+    throw new Error("The AI bridge is out of date. Restart it with `npm run ai-bridge`.");
   }
+  if (!response.ok || !result) {
+    throw new Error(typeof result?.error === "string" ? result.error : `AI bridge error (${response.status}).`);
+  }
+  return result;
+}
+
+export interface DeckGenerationRequest {
+  source?: { kind: "markdown" | "pptx"; name: string; text: string };
+  mode?: "restyle" | "rewrite";
+  catalog: unknown;
+  today: string;
+  // Set on a fix: the previous spec and the problems the builder found.
+  spec?: unknown;
+  errors?: string[];
+}
+
+export interface DeckGenerationResponse {
+  notes: string[];
+  // A whole spec on the first request; changed slides by index on a fix.
+  spec: unknown | null;
+  slides: Record<string, unknown> | null;
+}
+
+export async function requestDeckGeneration(request: DeckGenerationRequest, signal?: AbortSignal): Promise<DeckGenerationResponse> {
+  const body = await postToBridge("/api/deck", request, signal);
+  return {
+    notes: Array.isArray(body.notes) ? body.notes.filter((note): note is string => typeof note === "string") : [],
+    spec: body.spec ?? null,
+    slides: isRecord(body.slides) ? body.slides : null,
+  };
+}
+
+export async function requestSlideEdit(
+  request: SlideChatRequest,
+  signal?: AbortSignal,
+): Promise<SlideChatResponse> {
+  const body = await postToBridge("/api/slide-chat", request, signal);
   return {
     reply: typeof body.reply === "string" ? body.reply : "",
     data: body.data ?? null,

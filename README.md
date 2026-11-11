@@ -27,6 +27,9 @@ The editor needs a screen at least **1280px wide**. Narrower windows show a noti
 - **Themes:** Blue, Cream, Black, Yellow and Orange, per slide or for the whole deck. Themes recolor elements reversibly.
 - **Presentation mode:** use the **Present** button in the right panel.
 - **PowerPoint export:** export the whole deck as a `.pptx` from the top bar.
+- **Import from documents (local only):** turn a Markdown or PowerPoint file into WKND slides with Claude, then review and import. Use **Import** in the top bar. See [Import from MD or PPTX](#import-from-md-or-pptx-local-only).
+- **Deck spec import:** build a whole deck from a JSON spec, for example one written by an AI agent. See [docs/deck-spec](docs/deck-spec/README.md).
+- **Guide for AI agents:** how to write a `.md` concept, `.pptx` or deck spec that imports cleanly, with every layout and its text limits. See [docs/agent-guide](docs/agent-guide/README.md).
 - **AI assistant (local only):** edit Team, Agenda and Timeline content by chatting. See [AI assistant](#ai-assistant-local-only).
 - **Autosave:** the deck is saved to the browser's `localStorage`, with undo/redo.
 
@@ -86,10 +89,26 @@ Notes:
 - **Restart the bridge after editing `scripts/ai-bridge.mjs`.** An old bridge answers `Not found.`
 - Limits come from the layouts: Team "Squads" holds 4 groups, "Org" holds 5; Agenda holds 6 items; Timeline holds 5–10 phases depending on the variant.
 
+## Import from MD or PPTX (local only)
+
+**Import → Document** turns a `.md` or `.pptx` file into WKND slides. It uses the same local bridge as the AI assistant, so start `npm run ai-bridge` next to `npm run dev`.
+
+1. The browser reads the file. PowerPoint slides are read as text with font sizes, tables and speaker notes. Text that repeats on most slides, such as the deck name and page numbers, is dropped. Pictures and charts are not imported.
+2. Claude picks a WKND layout for each slide and fills its fields, following [the layout catalog](docs/deck-spec/README.md#the-catalog).
+3. The deck builder checks the result. Claude fixes what does not fit, for up to two rounds.
+4. You review the preview, Claude's notes and any remaining issues, then choose **Replace deck** or **Add to deck**.
+
+There are two modes:
+
+- **Keep content** keeps the slides, order and wording, and shortens only text that doesn't fit. WKND titles are short, so long source titles are often shortened.
+- **Rewrite & condense** lets Claude restructure the story into about 12–20 slides.
+
+Placeholders such as `[Nama Klien]` are kept as written. A long document can take a few minutes. Speaker notes are read for context but are not added to the slides.
+
 ## Project structure
 
 ```
-app/                  Next.js routes (/ → /editor)
+app/                  Next.js routes (/ → /editor, /deck-spec/catalog.json)
 components/editor/    Editor UI: canvas, sidebars, toolbars, dialogs, AI chat
 components/ui/        Shared primitives (button, tooltip, menus, switch)
 store/editor-store.tsx  Zustand store: deck state, actions, undo/redo, persistence
@@ -103,6 +122,7 @@ lib/
   export/             PowerPoint export (pptxgenjs)
   presentation/       Persistence, validation, default deck
   ai/                 AI chat adapters and bridge client
+  deck-spec/          Deck spec → presentation builder and layout catalog
 scripts/ai-bridge.mjs Local bridge between the AI chat and Claude Code
 public/assets/        Brand images, 3D illustrations, placeholder photos
 ```

@@ -1,0 +1,309 @@
+{
+  "version": 1,
+  "title": "Kopi Nusantara — App Redesign Proposal",
+  "footer": {
+    "left": "Kopi Nusantara × Weekend",
+    "note": "Confidential — for Kopi Nusantara only"
+  },
+  "slides": [
+    {
+      "layout": "wknd-cover-brand",
+      "content": {
+        "eyebrow": "Proposal — 2026",
+        "title": "Kopi Nusantara",
+        "subtitle": "Redesign aplikasi loyalty untuk 2 juta pelanggan"
+      }
+    },
+    {
+      "layout": "wknd-agenda-overview",
+      "content": {
+        "eyebrow": "Agenda",
+        "title": "Yang akan\nkita bahas.",
+        "items": [
+          {
+            "title": "Latar Belakang",
+            "description": "Kondisi aplikasi saat ini"
+          },
+          {
+            "title": "Pendekatan",
+            "description": "Cara kami bekerja"
+          },
+          {
+            "title": "Tim",
+            "description": "Orang-orang di balik proyek"
+          },
+          {
+            "title": "Timeline",
+            "description": "12 minggu menuju launch"
+          },
+          {
+            "title": "Investasi",
+            "description": "Pilihan paket kerja sama"
+          }
+        ],
+        "intro": "Lima topik yang akan kita bahas bersama hari ini."
+      }
+    },
+    {
+      "layout": "wknd-full-text-statement",
+      "content": {
+        "eyebrow": "Latar Belakang",
+        "title": "Loyal,\ntapi lelah.",
+        "subtitle": "Pelanggan suka kopinya, tapi aplikasinya membuat mereka menyerah di tengah jalan.",
+        "columns": [
+          {
+            "body": "Aplikasi saat ini dibangun tahun 2019 dan tumbuh fitur demi fitur tanpa sistem desain. Hasilnya, setiap halaman terasa berbeda dan pelanggan sering tersesat saat mencari poin atau promo."
+          },
+          {
+            "body": "Data menunjukkan 38% pelanggan berhenti di halaman checkout, dan rating aplikasi turun ke 3,6. Keluhan terbanyak adalah proses pemesanan yang lambat dan promo yang sulit ditemukan."
+          },
+          {
+            "body": "Kopi Nusantara ingin aplikasi yang cepat, konsisten dan terasa hangat seperti gerainya, sekaligus siap untuk fitur baru seperti langganan bulanan dan pemesanan grup."
+          }
+        ]
+      }
+    },
+    {
+      "layout": "wknd-image-approach",
+      "content": {
+        "title": "Pendekatan:",
+        "subtitle": "Tiga prinsip yang memandu redesign ini",
+        "points": [
+          {
+            "text": "Riset langsung bersama pelanggan di gerai"
+          },
+          {
+            "text": "Satu sistem desain untuk semua fitur"
+          },
+          {
+            "text": "Rilis bertahap, diukur di setiap langkah"
+          }
+        ]
+      }
+    },
+    {
+      "layout": "wknd-team-squads",
+      "content": {
+        "eyebrow": "Tim Kami",
+        "title": "Tim di balik\nproyek ini.",
+        "intro": "Tiga squad yang bekerja bersama\ndari riset sampai rilis.",
+        "groups": [
+          {
+            "name": "Design",
+            "description": "Riset & desain produk",
+            "members": [
+              {
+                "role": "Product Designer"
+              },
+              {
+                "role": "UX Researcher"
+              }
+            ]
+          },
+          {
+            "name": "Mobile",
+            "description": "iOS & Android",
+            "members": [
+              {
+                "role": "Mobile Lead"
+              },
+              {
+                "role": "Flutter Engineer"
+              }
+            ]
+          },
+          {
+            "name": "Delivery",
+            "description": "Kualitas & koordinasi",
+            "members": [
+              {
+                "role": "Project Manager"
+              },
+              {
+                "role": "QA Engineer"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "layout": "wknd-timeline-road",
+      "content": {
+        "eyebrow": "Timeline",
+        "title": "12 minggu\nmenuju launch.",
+        "phases": [
+          {
+            "title": "Discovery",
+            "description": "Riset pelanggan dan audit aplikasi",
+            "start": "2027-01-04",
+            "end": "2027-01-17"
+          },
+          {
+            "title": "Design",
+            "description": "Sistem desain dan prototipe",
+            "start": "2027-01-18",
+            "end": "2027-02-14"
+          },
+          {
+            "title": "Build",
+            "description": "Pengembangan dan integrasi API",
+            "start": "2027-02-15",
+            "end": "2027-03-14"
+          },
+          {
+            "title": "Launch",
+            "description": "Rilis bertahap dan monitoring",
+            "start": "2027-03-15",
+            "end": "2027-03-28"
+          }
+        ],
+        "intro": "Perjalanan 12 minggu dari riset pertama\nsampai hari launch."
+      }
+    },
+    {
+      "layout": "wknd-table-scope",
+      "content": {
+        "eyebrow": "Scope",
+        "title": "Scope of Work",
+        "subtitle": "Siapa memimpin apa di setiap fase proyek.",
+        "table": {
+          "columns": [
+            {
+              "title": "Layanan"
+            },
+            {
+              "title": "01 Discovery"
+            },
+            {
+              "title": "02 Design"
+            },
+            {
+              "title": "03 Build"
+            },
+            {
+              "title": "04 Launch"
+            }
+          ],
+          "rows": [
+            [
+              "UX Research",
+              "Lead",
+              "Support",
+              "—",
+              "Support"
+            ],
+            [
+              "UI & Design System",
+              "Support",
+              "Lead",
+              "Support",
+              "—"
+            ],
+            [
+              "Mobile App",
+              "—",
+              "Support",
+              "Lead",
+              "Lead"
+            ],
+            [
+              "QA & Release",
+              "—",
+              "—",
+              "Support",
+              "Lead"
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "layout": "wknd-table-packages",
+      "content": {
+        "eyebrow": "Investasi",
+        "title": "Pilih paket Anda",
+        "subtitle": "Tiga level kerja sama sesuai kebutuhan Kopi Nusantara.",
+        "table": {
+          "columns": [
+            {
+              "title": "Yang didapat"
+            },
+            {
+              "title": "Essential",
+              "subtitle": "Rp 450 jt"
+            },
+            {
+              "title": "Growth",
+              "subtitle": "Rp 780 jt"
+            },
+            {
+              "title": "Signature",
+              "subtitle": "Rp 1,2 M"
+            }
+          ],
+          "rows": [
+            [
+              "Durasi",
+              "8 minggu",
+              "12 minggu",
+              "16 minggu"
+            ],
+            [
+              "Riset pelanggan",
+              "—",
+              "✓",
+              "✓"
+            ],
+            [
+              "Sistem desain",
+              "✓",
+              "✓",
+              "✓"
+            ],
+            [
+              "Fitur langganan",
+              "—",
+              "—",
+              "✓"
+            ],
+            [
+              "Support setelah rilis",
+              "1 bulan",
+              "3 bulan",
+              "6 bulan"
+            ]
+          ],
+          "highlightColumn": 2,
+          "badge": "Rekomendasi"
+        }
+      }
+    },
+    {
+      "layout": "wknd-questions",
+      "content": {
+        "eyebrow": "Langkah berikutnya",
+        "steps": [
+          {
+            "title": "Beri masukan",
+            "body": "Kirim catatan Anda tentang proposal ini."
+          },
+          {
+            "title": "Sepakati scope",
+            "body": "Kita kunci scope, timeline dan tim dalam satu sesi."
+          },
+          {
+            "title": "Kick-off",
+            "body": "Proyek dimulai di minggu pertama Januari."
+          }
+        ]
+      }
+    },
+    {
+      "layout": "wknd-thank-you",
+      "content": {
+        "subtitle": "Mari bangun sesuatu yang hebat bersama."
+      }
+    }
+  ]
+}

@@ -4,7 +4,7 @@ import { ArrowUp, LoaderCircle, Sparkles, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { requestSlideEdit, type ChatTurn, type SlideChatKind } from "@/lib/ai/bridge-client";
+import { AI_BRIDGE_ENABLED, requestSlideEdit, type ChatTurn, type SlideChatKind } from "@/lib/ai/bridge-client";
 import {
   checkProposal,
   getSlideChatTarget,
@@ -17,10 +17,6 @@ import { estimateComponentText } from "@/lib/text/component-text";
 import { cn } from "@/lib/utils";
 import { selectActiveSlide, useEditorStore } from "@/store/editor-store";
 
-// The bridge only exists on your machine, so the chat is dev-only unless a
-// bridge URL is configured explicitly.
-const AI_CHAT_ENABLED =
-  process.env.NODE_ENV === "development" || Boolean(process.env.NEXT_PUBLIC_AI_BRIDGE_URL);
 
 // How many times the AI may fix a proposal the editor rejected.
 const MAX_RETRIES = 2;
@@ -71,7 +67,7 @@ function useComponentTextMeasure(): TextMeasure {
 }
 
 export function AiChatPanel() {
-  if (!AI_CHAT_ENABLED) return null;
+  if (!AI_BRIDGE_ENABLED) return null;
   return <AiChat />;
 }
 

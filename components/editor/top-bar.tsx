@@ -1,8 +1,9 @@
 "use client";
 
-import { Download, LoaderCircle, Redo2, Undo2 } from "lucide-react";
+import { Download, LoaderCircle, Redo2, Undo2, Upload } from "lucide-react";
 import { type ReactNode, useState } from "react";
 
+import { ImportDeckDialog } from "@/components/editor/import-deck-dialog";
 import { InsertToolbar } from "@/components/editor/insert-toolbar";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,6 +36,7 @@ export function DisabledControl({ label, children }: DisabledControlProps) {
 
 export function TopBar() {
   const [isExporting, setIsExporting] = useState(false);
+  const [isImportOpen, setIsImportOpen] = useState(false);
   const presentation = useEditorStore((state) => state.presentation);
   const canUndo = useEditorStore((state) => state.undoStack.length > 0);
   const canRedo = useEditorStore((state) => state.redoStack.length > 0);
@@ -105,7 +107,18 @@ export function TopBar() {
         </div>
       ) : null}
 
-      <div className="p-2">
+      <div className="flex items-center gap-1 p-2">
+        <DisabledControl label="Build slides from a deck spec (JSON)">
+          <Button
+            aria-label="Import deck spec"
+            onClick={() => setIsImportOpen(true)}
+            size="tool"
+            variant="ghost"
+          >
+            <Upload aria-hidden="true" className="size-[18px]" strokeWidth={1.8} />
+            Import
+          </Button>
+        </DisabledControl>
         <Button
           aria-busy={isExporting}
           aria-label="Export presentation as PowerPoint"
@@ -128,6 +141,8 @@ export function TopBar() {
           {isExporting ? "Exporting…" : "Export"}
         </Button>
       </div>
+
+      {isImportOpen ? <ImportDeckDialog onClose={() => setIsImportOpen(false)} /> : null}
     </header>
   );
 }

@@ -7,7 +7,8 @@ import type { TableVariant } from "@/types/table";
 function belongsToTable(element: SlideElement, variant: TableVariant) {
   if (element.role === "background") return false;
   if (variant === "packages") {
-    if (element.type === "image") return element.src.endsWith("/3d-stars.png") && element.width === 184;
+    // The highlight star, by its legacy or current 3D asset path.
+    if (element.type === "image") return /\/(3d-stars|stars-[a-z]+)\.png$/.test(element.src) && element.width === 184;
     return element.y >= 314 && element.y < 980;
   }
   if (element.type === "image") return false;

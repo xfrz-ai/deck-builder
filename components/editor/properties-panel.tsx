@@ -5,6 +5,10 @@ import { useState } from "react";
 
 import { CardProperties } from "@/components/editor/panels/card-properties";
 import { ImageProperties } from "@/components/editor/panels/image-properties";
+import {
+  canRecolor3dObject,
+  Object3dColorProperties,
+} from "@/components/editor/panels/object-3d-color-properties";
 import { SlideProperties } from "@/components/editor/panels/slide-properties";
 import { TableProperties } from "@/components/editor/panels/table-properties";
 import { TextBlockProperties } from "@/components/editor/panels/text-block-properties";
@@ -123,6 +127,10 @@ export function PropertiesPanel() {
           ))}
           <p className="text-[11px] leading-4 text-muted-foreground">Edit this graphic from the form. Edit slide text directly on the canvas.</p>
         </section>
+      ) : null}
+
+      {activeSlide && selectedElement && selectedElementIds.length === 1 && canRecolor3dObject(selectedElement) ? (
+        <Object3dColorProperties element={selectedElement} slideId={activeSlide.id} />
       ) : null}
 
       {activeSlide && selectedElement?.component ? (
