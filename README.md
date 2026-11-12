@@ -1,38 +1,49 @@
 # Deck Builder
 
-A browser-based editor for building WKND-branded presentation decks. Pick a slide layout, edit content on a 1920×1080 canvas, present full-screen, and export to PowerPoint.
+A browser-based editor for Weekend (WKND) presentations. Pick a slide layout, edit content on a 1920×1080 canvas, present full-screen and export to PowerPoint.
 
-Built with Next.js 16 (static export), React 19, Konva, Zustand and Tailwind CSS 4. Deployed to Cloudflare Workers as static assets.
+**Open the app:** <https://deck-builder.xfrz-ai.workers.dev>
 
-## Quick start
+- [Make a deck with your AI agent](#make-a-deck-with-your-ai-agent): no install needed
+- [Using the editor](#using-the-editor)
+- [Run it locally](#run-it-locally)
+- [Local AI features](#local-ai-features): the live Deck Agent, Ask AI and document import
+- [Development](#development) and [Deploy](#deploy)
 
-```bash
-npm install
-npm run dev
+## Make a deck with your AI agent
+
+Any AI agent or chat that can read a file or a link can write a WKND deck: Claude, ChatGPT, Codex, Gemini and so on. You don't need to install anything.
+
+**1. Give your agent the guide.** Paste this into a new chat and fill in the brackets:
+
+```text
+Baca dan ikuti panduan ini: https://deck-builder.xfrz-ai.workers.dev/deck-guide.md
+Bantu saya bikin deck tentang [topik] untuk [audiens].
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to see the presentation Library. Click a presentation to open its editor.
+If your agent can't open links, download [DECK-GUIDE.md](DECK-GUIDE.md) and attach it instead.
 
-The editor needs a screen at least **1280px wide**. Narrower windows show a notice instead of the editor.
+**2. Talk it through.** The agent asks a few questions about the brief and proposes a storyline, one line per slide. Once you approve it, the agent writes the whole deck as a JSON *deck spec*.
 
-## Features
+**3. Import the JSON.** Open the [app](https://deck-builder.xfrz-ai.workers.dev), click **Import**, choose the **Deck spec (JSON)** tab and paste the JSON (or **Upload .json**). Check the preview, then click **Create presentation**.
 
-- **Slide layouts:** about 40 ready-made WKND layouts in these groups:
-  - Cover, Agenda, Team, Timeline
-  - Scope of work, Tables
-  - Image, Bento, Full text, Device mockups
-  - Thank you / Questions
-- **Structured components:** Agenda, Team, Timeline and Table slides are generated from data and edited through a form. The layout reflows when content changes, and the form warns when text doesn't fit the design.
-- **Free editing:** text, shapes, images, cards, image grids, device mockups, snapping, zoom, and an optional 24×12 layout grid overlay.
+**4. Finish in the editor.** Swap the placeholder photos, fill in placeholders such as `[Nama Klien]`, then click **Present** or **Export** (PowerPoint).
+
+Good to know:
+
+- **Fixing issues:** the import lists issues per slide. Red errors mean text that doesn't fit or a wrong number of items. Paste the list back to your agent and it sends a corrected JSON.
+- **Revisions:** ask your agent for changes. To apply them, open the presentation, click **Import** in the top bar, paste the new JSON and choose **Replace deck**. Replacing discards changes you made by hand, so make small text edits in the editor instead.
+- **Storage:** decks are saved in your browser only, with no account. Use a laptop or desktop, because the editor needs a screen at least 1280px wide.
+
+## Using the editor
+
+- **Slide layouts:** 40 ready-made WKND layouts: covers, agenda, team, timeline, scope of work, tables, image, bento, full text, device mockups, and thank you / questions.
+- **Structured components:** Agenda, Team, Timeline and Table slides are edited through a form. The layout reflows when the content changes, and the form warns when text doesn't fit.
+- **Free editing:** text, shapes, images, cards, image grids, device mockups, snapping, zoom and an optional 24×12 layout grid.
 - **Themes:** Blue, Cream, Black, Yellow and Orange, per slide or for the whole deck. Themes recolor elements reversibly.
-- **Presentation mode:** use the **Present** button in the right panel.
-- **PowerPoint export:** export the whole deck as a `.pptx` from the top bar.
-- **Import from documents (local only):** turn a Markdown or PowerPoint file into WKND slides with Claude, then review and import. Use **Import** in the top bar. See [Import from MD or PPTX](#import-from-md-or-pptx-local-only).
-- **Deck spec import:** build a whole deck from a JSON spec, for example one written by an AI agent. See [docs/deck-spec](docs/deck-spec/README.md).
-- **Guide for AI agents:** how to write a `.md` concept, `.pptx` or deck spec that imports cleanly, with every layout and its text limits. See [docs/agent-guide](docs/agent-guide/README.md).
-- **Deck Agent (local, Codex or Claude):** discuss the brief and storyline with Codex CLI, Claude Code CLI or Claude Desktop, then the agent builds it; a new presentation appears in the Library while the agent builds it slide by slide. Click the card to watch with Follow AI, a canvas highlight, and completion status. Ten MCP stdio tools, including a shared [deck playbook](docs/agent-guide/playbook.md) for workflow and copy voice, use the existing builder and local JSON storage. Live updates protect drafts and reconnect after interruptions. See [local agent setup](docs/local-deck-agent.md), [MVP plan](docs/local-deck-agent-plan.md), and [Live Canvas plan](docs/live-canvas-agent-plan.md). Manual editor changes use Save; text validation is estimated.
-- **AI assistant (local only):** edit Team, Agenda and Timeline content by chatting. See [AI assistant](#ai-assistant-local-only).
-- **Autosave:** browser Library decks are saved to IndexedDB, with undo/redo. Older localStorage decks migrate into the Library. CLI decks use the local service and explicit editor Save.
+- **Present:** the **Present** button in the right panel starts presentation mode.
+- **Export:** **Export** in the top bar downloads the whole deck as a `.pptx`.
+- **Autosave:** decks are saved in the browser (IndexedDB), with undo and redo.
 
 ### Keyboard shortcuts
 
@@ -51,7 +62,18 @@ The editor needs a screen at least **1280px wide**. Narrower windows show a noti
 
 In presentation mode, use `→`, `Space`, `Enter` or `N` to go forward, `←`, `Backspace` or `P` to go back, and `Esc` to exit.
 
-## Scripts
+## Run it locally
+
+You need [Node.js](https://nodejs.org) 20 or later and Git.
+
+```bash
+git clone https://github.com/xfrz-ai/deck-builder.git
+cd deck-builder
+npm install
+npm run dev
+```
+
+Open <http://localhost:3000> to see the presentation Library.
 
 | Command | What it does |
 |---|---|
@@ -60,89 +82,122 @@ In presentation mode, use `→`, `Space`, `Enter` or `N` to go forward, `←`, `
 | `npm run lint` | Run ESLint |
 | `npm run preview` | Build, then serve `./out` locally with `wrangler dev` |
 | `npm run deploy` | Build and deploy to Cloudflare Workers |
-| `npm run ai-bridge` | Start the local AI assistant bridge (dev only) |
-| `npm run deck-service` | Start the authenticated local deck repository/service |
-| `npm run deck-agent` | Open the connected Library and start project-scoped Codex with deck MCP tools |
-| `npm run deck-agent:claude` | Same, with Claude Code CLI |
-| `npm run deck-agent:desktop-config -- --write` | Add the deck MCP server to Claude Desktop (backs up its config first) |
-| `npm run test:deck-agent` | Test the repository, MCP, live updates, and agent jobs |
-| `npm run test:deck-agent:e2e -- --library` | Test Library discovery and incremental live building in isolated Chrome |
+| `npm run ai-bridge` | Start the local AI bridge for Ask AI, document import and Create with AI |
+| `npm run deck-service` | Start the local deck service that the Deck Agent writes to |
+| `npm run deck-agent` | Open the Library and start Codex with the deck tools |
+| `npm run deck-agent:claude` | Same, with Claude Code |
+| `npm run deck-agent:desktop-config -- --write` | Add the deck tools to Claude Desktop (backs up its config first) |
+| `npm run test:deck-agent` | Test the deck service, MCP server, live updates and agent jobs |
+| `npm run test:deck-agent:e2e -- --library` | Test Library discovery and live building in an isolated Chrome |
 
-## AI assistant (local only)
+## Local AI features
 
-The **Ask AI** button in the bottom-left of the canvas opens a chat. It edits the selected slide's Team, Agenda or Timeline content, for example "Add a Data squad with 3 people" or "Move every phase one week later".
+These features only work with `npm run dev` on your own machine. They use [Claude Code](https://claude.com/claude-code) (or Codex for the Deck Agent), installed and logged in, so no API key is needed.
 
-It runs on **Claude Code on your own machine**, so no API key is needed. You need [Claude Code](https://claude.com/claude-code) installed and logged in.
+### Deck Agent: live build
+
+Discuss the brief and storyline with Codex, Claude Code or Claude Desktop, and watch the agent build the deck slide by slide in the Library. It uses the deck tools over MCP, which check every slide as it is added.
 
 ```bash
-# Terminal 1
-npm run ai-bridge
-
-# Terminal 2
-npm run dev
+npm run deck-service       # Terminal 1
+npm run dev                # Terminal 2
+npm run deck-agent:claude  # Terminal 3 (or npm run deck-agent for Codex)
 ```
 
-How it works:
+In Claude Code, type `/deck` followed by your brief. Setup, Claude Desktop, live updates and data storage are described in [docs/local-deck-agent.md](docs/local-deck-agent.md) (Indonesian).
 
-1. The browser sends the slide's content (text and structure only, never photos) to the bridge at `http://127.0.0.1:8787`.
+### Ask AI
+
+The **Ask AI** button at the bottom left of the canvas edits the selected slide's Team, Agenda or Timeline content by chat, for example "Add a Data squad with 3 people" or "Move every phase one week later".
+
+```bash
+npm run ai-bridge   # Terminal 1
+npm run dev         # Terminal 2
+```
+
+1. The browser sends the slide's content (text and structure, never photos) to the bridge at `http://127.0.0.1:8787`.
 2. The bridge ([scripts/ai-bridge.mjs](scripts/ai-bridge.mjs)) runs `claude -p` in an empty temp folder with tools disabled, so Claude can't read or change project files.
-3. The editor checks the proposal with the same rules as the forms, such as item limits and whether text fits. If a check fails, the errors go back to Claude for up to two retries.
-4. Valid changes are applied as a single undo step, so `Cmd/Ctrl+Z` reverts them.
+3. The editor checks the proposal with the same rules as the forms. If a check fails, the errors go back to Claude for up to two retries.
+4. Valid changes are applied as one undo step.
 
 Notes:
 
-- The chat only appears in `npm run dev`, or when `NEXT_PUBLIC_AI_BRIDGE_URL` is set. It is not part of the deployed site.
-- It uses your Claude Code default model. Override it with `AI_BRIDGE_MODEL=sonnet npm run ai-bridge`. The port can be changed with `AI_BRIDGE_PORT`.
+- The chat only appears in `npm run dev`, or when `NEXT_PUBLIC_AI_BRIDGE_URL` is set.
+- Choose the model with `AI_BRIDGE_MODEL=sonnet npm run ai-bridge` and the port with `AI_BRIDGE_PORT`.
 - **Restart the bridge after editing `scripts/ai-bridge.mjs`.** An old bridge answers `Not found.`
-- Limits come from the layouts: Team "Squads" holds 4 groups, "Org" holds 5; Agenda holds 6 items; Timeline holds 5–10 phases depending on the variant.
 
-## Import from MD or PPTX (local only)
+### Import from Markdown or PowerPoint
 
-**Import → Document** turns a `.md` or `.pptx` file into WKND slides. It uses the same local bridge as the AI assistant, so start `npm run ai-bridge` next to `npm run dev`.
+**Import → Document (MD, PPTX)** turns a `.md` or `.pptx` file into WKND slides. It uses the same bridge, so run `npm run ai-bridge` next to `npm run dev`.
 
-1. The browser reads the file. PowerPoint slides are read as text with font sizes, tables and speaker notes. Text that repeats on most slides, such as the deck name and page numbers, is dropped. Pictures and charts are not imported.
-2. Claude picks a WKND layout for each slide and fills its fields, following [the layout catalog](docs/deck-spec/README.md#the-catalog).
-3. The deck builder checks the result. Claude fixes what does not fit, for up to two rounds.
-4. You review the preview, Claude's notes and any remaining issues, then choose **Replace deck** or **Add to deck**.
+1. The browser reads the file. PowerPoint slides are read as text with font sizes, tables and speaker notes. Pictures and charts are not imported.
+2. Claude picks a WKND layout for each slide and fills its fields.
+3. The builder checks the result, and Claude fixes what doesn't fit, for up to two rounds.
+4. You review the preview and Claude's notes, then import.
 
-There are two modes:
+Choose **Keep content** to keep the slides, order and wording (only text that doesn't fit is shortened), or **Rewrite & condense** to let Claude restructure the story into about 12–20 slides.
 
-- **Keep content** keeps the slides, order and wording, and shortens only text that doesn't fit. WKND titles are short, so long source titles are often shortened.
-- **Rewrite & condense** lets Claude restructure the story into about 12–20 slides.
+## Development
 
-Placeholders such as `[Nama Klien]` are kept as written. A long document can take a few minutes. Speaker notes are read for context but are not added to the slides.
-
-## Project structure
+Built with Next.js 16 (static export), React 19, Konva, Zustand and Tailwind CSS 4.
 
 ```
-app/                  Next.js routes (Library, /editor, /preview, /deck-spec/catalog.json)
+app/                  Routes: Library, /editor, /preview, /deck-spec/catalog.json, /deck-guide.md
 components/home/      Presentation Library and live agent cards
 components/editor/    Editor UI: canvas, sidebars, toolbars, dialogs, AI chat
 components/ui/        Shared primitives (button, tooltip, menus, switch)
 store/editor-store.tsx  Zustand store: deck state, actions, undo/redo, persistence
 types/                Presentation, slide and component data types
 lib/
-  layouts/            Slide layout definitions + registry + 24×12 grid helpers
+  layouts/            Slide layout definitions, registry and 24×12 grid helpers
   agenda/ team/ timeline/ table/   Data models, validation and element generation
   themes/             Deck themes and theme application
   text/               Text measurement and text blocks
   elements/ image/ mockup/          Element factories, image fit, device mockups
   export/             PowerPoint export (pptxgenjs)
   presentation/       Persistence, validation, default deck
-  ai/                 AI chat adapters and bridge client
-  deck-spec/          Deck spec → presentation builder and layout catalog
-  deck-service/       Authenticated loopback service and atomic JSON repository
-  local-deck/         Browser service client, events and draft-safe live session
-scripts/ai-bridge.mjs Local bridge between the AI chat and Claude Code
-scripts/deck-*.{ts,mjs} Local service, MCP stdio, and Codex/Claude launchers
+  ai/                 AI chat adapters, bridge client and document-to-deck generation
+  deck-spec/          Deck spec builder and layout catalog
+  deck-service/       Local deck service and atomic JSON repository
+  local-deck/         Browser client for the deck service and live sessions
+scripts/              AI bridge, deck service, MCP server and agent launchers
 public/assets/        Brand images, 3D illustrations, placeholder photos
 ```
+
+### Docs
+
+| File | For |
+|---|---|
+| [DECK-GUIDE.md](DECK-GUIDE.md) | AI agents writing a deck spec. Also served by the app at `/deck-guide.md`. |
+| [docs/agent-guide/playbook.md](docs/agent-guide/playbook.md) | Workflow and copy voice for MCP agents, read by the `get_deck_playbook` tool on every call |
+| [docs/local-deck-agent.md](docs/local-deck-agent.md) | Setting up and using the live Deck Agent (Indonesian) |
+| [docs/deck-spec/example-proposal.json](docs/deck-spec/example-proposal.json) | A full example spec, used by the end-to-end test |
+
+The storytelling and copywriting sections of the playbook and `DECK-GUIDE.md` are the same text. **When you change one, change the other.**
 
 ### How slides are modelled
 
 A deck is a `Presentation` with `slides`, and each slide is a list of positioned `elements` (`text`, `shape`, `image`). See [types/presentation.ts](types/presentation.ts).
 
 Component slides (Agenda, Team, Timeline, Table) also store their **data** on the slide, for example `slide.team`. Their graphic elements are regenerated from that data, so edit the data through the store action rather than the elements. For example, `saveTeam` handles the form and `applyTeamData` handles the AI.
+
+### Deck specs
+
+A deck spec is JSON that picks a layout for each slide and fills its content fields. The format is in [DECK-GUIDE.md](DECK-GUIDE.md#4-deck-spec-format).
+
+| File | Contents |
+|---|---|
+| [lib/deck-spec/deck-spec.ts](lib/deck-spec/deck-spec.ts) | Spec and result types |
+| [lib/deck-spec/static-layouts.ts](lib/deck-spec/static-layouts.ts) | Fields of the fixed layouts, mapped to template element ids |
+| [lib/deck-spec/component-layouts.ts](lib/deck-spec/component-layouts.ts) | Agenda, Team, Timeline and Table content, built with the same models and checks as the forms |
+| [lib/deck-spec/build-deck.ts](lib/deck-spec/build-deck.ts) | `buildDeckFromSpec(spec, measure?)` |
+| [lib/deck-spec/layout-catalog.ts](lib/deck-spec/layout-catalog.ts) | `getDeckSpecCatalog()`, served at `/deck-spec/catalog.json` |
+| [lib/deck-spec/source-document.ts](lib/deck-spec/source-document.ts) | Reads `.md` and `.pptx` files into text for Claude |
+| [lib/ai/deck-generation.ts](lib/ai/deck-generation.ts) | Drafts a spec with Claude, checks it and lets Claude fix problems |
+
+31 of the 40 layouts can be used in a spec. Image Split, SOW Modules and the seven device mockups can't, because their content is positioned by hand. To support another fixed layout, add an entry to `STATIC_LAYOUT_CONTENT` whose `element` values match the layout's element ids (without the `<layoutId>-` prefix).
+
+**When you add or change a layout, update [DECK-GUIDE.md](DECK-GUIDE.md) sections 5 and 6.** The catalog updates itself, but the guide doesn't.
 
 ### Adding a slide layout
 
@@ -153,28 +208,20 @@ Component slides (Agenda, Team, Timeline, Table) also store their **data** on th
 ### Things to know
 
 - **Next.js 16 differs from older versions.** Read the bundled docs in `node_modules/next/dist/docs/` before using Next APIs (see [AGENTS.md](AGENTS.md)).
-- **The app is a static export** (`output: "export"`). There is no server, so API routes that read the request (e.g. `POST` handlers) don't work, even in `next dev`.
-- **Browser storage is per browser.** Library decks live in IndexedDB (`deck-library`); the legacy `presentation-editor-storage` key is kept for migration/backup. Images are stored inline. CLI decks live in `.deck-builder/decks` and appear alongside browser decks while connected to the local service.
+- **The app is a static export** (`output: "export"`). There is no server, so route handlers that read the request (such as `POST` handlers) don't work, even in `next dev`. `GET` handlers marked `force-static` are prerendered into files.
+- **Browser storage is per browser.** Library decks live in IndexedDB (`deck-library`), and images are stored inline. The legacy `presentation-editor-storage` localStorage key is kept for migration. Decks made by the Deck Agent live in `.deck-builder/decks` and appear in the Library while it is connected to the local deck service.
 
-## Build
+## Deploy
 
-```bash
-npm run build   # outputs to ./out
-```
-
-## Deploy to Cloudflare Workers
-
-The static export is served by a Worker using [Static Assets](https://developers.cloudflare.com/workers/static-assets/), configured in [wrangler.jsonc](wrangler.jsonc).
+The static export is served by a Cloudflare Worker using [Static Assets](https://developers.cloudflare.com/workers/static-assets/), configured in [wrangler.jsonc](wrangler.jsonc).
 
 ```bash
 npx wrangler login   # first time only
-npm run preview      # build + run locally with wrangler dev
-npm run deploy       # build + deploy to Cloudflare
+npm run preview      # build, then run locally with wrangler dev
+npm run deploy       # build, then deploy to Cloudflare
 ```
 
-### Deploy from GitHub (Workers Builds)
-
-In the Cloudflare dashboard, go to **Workers & Pages → Create → Import a repository**, select this repo and set:
+To deploy on every push instead, go to **Workers & Pages → Create → Import a repository** in the Cloudflare dashboard, select this repo and set:
 
 - **Build command:** `npm run build`
 - **Deploy command:** `npx wrangler deploy`

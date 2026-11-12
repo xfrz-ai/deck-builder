@@ -92,7 +92,7 @@ Draft manual, text editor/form aktif, dan gesture canvas menahan penerapan snaps
 
 Penerapan versi remote mempertahankan slide aktif yang masih ada serta zoom, membersihkan referensi selection yang sudah diganti, dan menghapus undo/redo dari basis lama. Editor memberi pemberitahuan ketika history tersebut direset. Draft tidak digabung otomatis dan expectedRevision tidak dinaikkan diam-diam.
 
-Animasi menandai hasil builder yang benar-benar tersimpan: slide baru, perpindahan fokus, dan highlight. Kursor AI yang menyeret elemen bebas belum tersedia. Lihat [plan Live Canvas](live-canvas-agent-plan.md).
+Animasi menandai hasil builder yang benar-benar tersimpan: slide baru, perpindahan fokus, dan highlight. Kursor AI yang menyeret elemen bebas belum tersedia.
 
 ## Data dan backup
 
@@ -180,5 +180,3 @@ npm run test:deck-agent:e2e -- --library --codex
 ```
 
 E2E menjalankan service/data sementara, menyajikan build `out`, dan memakai profil Chrome baru. Browser pengguna serta data deck asli tidak disentuh. `CHROME_PATH` dapat disetel jika executable Chrome berada di lokasi lain. Tidak ada dependensi atau fitur screenshot Playwright yang ditambahkan.
-
-[Rencana dan milestone](local-deck-agent-plan.md).

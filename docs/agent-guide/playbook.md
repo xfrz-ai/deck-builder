@@ -4,6 +4,8 @@ How to plan, write and build a Weekend (WKND) deck with the user. Every agent (C
 
 Layout ids, fields and character limits come from `list_layouts`. This playbook covers the conversation, the story and the copy.
 
+Sections 2 and 3 are also in `DECK-GUIDE.md` in the project root, the guide for agents without these tools. Keep both copies the same.
+
 ---
 
 ## 1. Workflow
@@ -64,7 +66,7 @@ Default arc for a proposal or pitch: **problem → impact → solution → proof
 | Part | What it answers | Typical layouts |
 |---|---|---|
 | Opening | Who and what is this for? | Cover, then `wknd-agenda-chapters` or `wknd-agenda-overview` |
-| Problem | What is going wrong or what is the opportunity? | `wknd-full-text-statement`, `wknd-full-text-paragraphs`, `wknd-image-field-notes` |
+| Problem | What is going wrong, or what is the opportunity? | `wknd-full-text-statement`, `wknd-full-text-paragraphs`, `wknd-image-field-notes` |
 | Impact | Why does it matter now? | `wknd-bento-grid` (numbers in card titles), `wknd-full-text` |
 | Solution | What do we propose? | `wknd-bento-columns`, `wknd-image-approach`, `wknd-image-moods` |
 | Proof | Why believe us? | `wknd-image-two-studies`, `wknd-bento-grid` |
@@ -76,34 +78,37 @@ Other deck types:
 - **Workshop:** cover, `wknd-agenda` (the schedule), content per session, `wknd-questions`.
 - **Project update:** cover, `wknd-agenda-overview`, `wknd-timeline-roadmap`, `wknd-bento-grid` for highlights, `wknd-table-bug-triage` or `wknd-table-scope`, `wknd-thank-you`.
 - **Case study:** cover, challenge (`wknd-full-text-statement`), approach (`wknd-image-approach`), work (`wknd-image-moods` or `wknd-image-materials`), results (`wknd-bento-grid`), `wknd-thank-you`.
+- **Investor pitch:** cover, problem (`wknd-full-text-statement`), solution (`wknd-bento-columns`), how it works (`wknd-image-approach`), traction (`wknd-bento-grid`, numbers in card titles), market (`wknd-full-text-paragraphs`), business model (`wknd-table-packages` for pricing tiers), team (`wknd-team-structure`), plan and use of funds (`wknd-timeline-roadmap`), the ask (`wknd-questions`, with the amount in a step), `wknd-thank-you`.
 
 ### Rules
 
 - **One message per slide.** If a slide needs two messages, it is two slides.
 - **The titles alone tell the story.** Reading only the slide titles in order should make the argument.
-- **Section dividers** (`wknd-agenda-spotlight` or `wknd-image-chapter`) only in decks over about 10 slides.
+- **Open with a cover and close** with `wknd-questions`, `wknd-thank-you`, or both in that order.
+- **No slide that is mostly placeholders.** If the user has no material for a slide, such as real case studies for a proof slide, leave the slide out and say so in the hand-off.
+- **Section dividers** (`wknd-agenda-spotlight` or `wknd-image-chapter`) only in decks over about 10 slides, one before each section. With more than three sections, alternate the two.
 - **Vary layouts:** never the same layout on two slides in a row, and any layout at most three times.
-- **Fixed item counts:** when content does not match a layout's count, merge items, split over two slides or choose another layout. Never pad with filler items.
+- **Fixed item counts:** when content doesn't match a layout's count, merge items, split them over two slides or choose another layout. Never pad with filler items.
 - **No layout for** charts, big-number slides, quote-only slides, logo walls or testimonials. Put metrics in `wknd-bento-grid` card titles.
-- About 10 slides for a pitch, 12–20 for a full proposal, unless the user says otherwise.
+- **Length:** about 10 slides for a pitch and 12–20 for a full proposal, unless the user says otherwise. The maximum is 60.
 
 ---
 
 ## 3. Copywriting
 
-This is the provisional WKND voice. Replace it with the official guide when one exists.
+This is the provisional WKND voice.
 
 ### Voice
 
 - **Clear and professional, never stiff.** Write the way a senior consultant talks to a client they respect.
 - **Client first.** More "Anda mendapat…" than "Kami adalah…". Address the reader as **Anda** in Indonesian.
-- **Specific, or a placeholder.** Never invent names, numbers, prices, dates, clients, logos or testimonials. Use `[Nama Klien]`, `Rp [TBD]`, `[Tanggal]`, `[X]%`.
+- **Specific, or a placeholder.** Never invent names, numbers, prices, dates, clients, logos or testimonials. Use `[Nama Klien]`, `Rp [TBD]`, `[Tanggal]`, `[X]%`. The builder keeps placeholders exactly as written. Other content you assume, such as features or team roles, is fine, but list it as an assumption when you hand off.
 - **Confident without hype.** Prove with specifics instead of adjectives.
 
 ### Language
 
-- Write the deck in the user's language, Indonesian by default.
-- Keep common industry terms in English: UX, roadmap, MVP, design system, sprint, stakeholder. Do not translate them awkwardly ("peta jalan").
+- Write the deck in the user's language, Indonesian by default. Mixed English and Indonesian stays mixed.
+- Keep common industry terms in English: UX, roadmap, MVP, design system, sprint, stakeholder. Don't translate them awkwardly ("peta jalan").
 - Avoid empty words: *solusi inovatif, sinergi, end-to-end, holistik, revolusioner, terdepan, one-stop solution, memaksimalkan potensi*. If a sentence still works without the word, delete it.
 - Indonesian runs about 20–30% longer than English. Check the character limits.
 
@@ -112,7 +117,8 @@ This is the provisional WKND voice. Replace it with the official guide when one 
 - **A title is a claim, not a label.** "Pengguna berhenti di langkah pembayaran" beats "Temuan riset".
 - Short: most content titles hold one line of about 20–36 characters. Move detail to the subtitle or intro.
 - Cover title: the client or project name, as short as possible.
-- No full stop at the end of a one-line title, unless the layout example uses one for style (such as `"Project\nName."`).
+- Use `\n` to choose where a title breaks, for example `"Loyal,\ntapi lelah."`.
+- No full stop at the end of a one-line title, unless it is a deliberate style like `"Project\nName."`.
 
 ### Body text and bullets
 
