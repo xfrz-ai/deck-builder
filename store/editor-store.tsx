@@ -63,6 +63,7 @@ import {
   ZOOM_STEP,
 } from "@/lib/canvas/zoom";
 import { createDefaultPresentation } from "@/lib/presentation/default-presentation";
+import { isPresentation } from "@/lib/presentation/validation";
 import {
   createDebouncedLocalStorage,
   EDITOR_STORAGE_KEY,
@@ -123,6 +124,7 @@ interface EditorHistoryState {
 }
 
 interface EditorActions {
+  applyRemotePresentation: (presentation: Presentation) => void;
   insertTextBlock: (slideId: string, template: TextBlockTemplate) => void;
   updateTextBlockLayout: (slideId: string, blockId: string, updates: TextBlockLayoutUpdates) => void;
   reflowTextBlocks: () => void;
@@ -317,6 +319,7 @@ export const selectActiveSlide = (state: EditorStore) =>
 
 export function createEditorStore(
   initialPresentation = createDefaultPresentation(),
+  options: { persist?: boolean } = {},
 ) {
   initialPresentation = reflowTextBlockPresentation(normalizeTablePresentation(normalizeTimelinePresentation(normalizeTeamPresentation(normalizeAgendaPresentation(initialPresentation)))));
   return createStore<EditorStore>()(
@@ -335,6 +338,18 @@ export function createEditorStore(
         showLayoutGrid: false,
         undoStack: [],
         redoStack: [],
+        applyRemotePresentation: (presentation) => set((state) => {
+          if (!isPresentation(presentation) || presentation.id !== state.presentation.id) return state;
+          const normalized = reflowTextBlockPresentation(normalizeTablePresentation(normalizeTimelinePresentation(normalizeTeamPresentation(normalizeAgendaPresentation(presentation)))));
+          const active = normalized.slides.find(slide => slide.id === state.activeSlideId) ?? normalized.slides[0];
+          return {
+            presentation: normalized, activeSlideId: active.id,
+            selectedElementIds: state.selectedElementIds.filter(id => active.elements.some(element => element.id === id)),
+            editingTextId: null, editingTextSelectAll: false,
+            agendaEditor: null, teamEditor: null, timelineEditor: null,
+            undoStack: [], redoStack: [],
+          };
+        }),
         insertTextBlock: (slideId, template) =>
           set((state) => {
             const previous = state.presentation.slides.find((slide) => slide.id === slideId);
@@ -1221,7 +1236,9 @@ export function createEditorStore(
         version: EDITOR_STORAGE_VERSION,
         skipHydration: true,
         storage: createJSONStorage<PersistedEditorState>(
-          createDebouncedLocalStorage,
+          options.persist === false
+            ? () => ({ getItem: () => null, setItem: () => undefined, removeItem: () => undefined })
+            : createDebouncedLocalStorage,
         ),
         partialize: (state) => ({
           presentation: state.presentation,
@@ -1254,12 +1271,16 @@ export type EditorStoreApi = ReturnType<typeof createEditorStore>;
 
 const EditorStoreContext = createContext<EditorStoreApi | null>(null);
 
-export function EditorStoreProvider({ children }: { children: ReactNode }) {
-  const [store] = useState(createEditorStore);
+export function EditorStoreProvider({ children, initialPresentation, persistent = true }: {
+  children: ReactNode;
+  initialPresentation?: Presentation;
+  persistent?: boolean;
+}) {
+  const [store] = useState(() => createEditorStore(initialPresentation, { persist: persistent }));
 
   useEffect(() => {
-    void store.persist?.rehydrate();
-  }, [store]);
+    if (persistent) void store.persist?.rehydrate();
+  }, [store, persistent]);
 
   return (
     <EditorStoreContext.Provider value={store}>
@@ -1268,12 +1289,16 @@ export function EditorStoreProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export function useEditorStore<T>(selector: (store: EditorStore) => T): T {
+export function useEditorStoreApi(): EditorStoreApi {
   const store = useContext(EditorStoreContext);
 
   if (!store) {
     throw new Error("useEditorStore must be used within EditorStoreProvider");
   }
 
-  return useStore(store, selector);
+  return store;
+}
+
+export function useEditorStore<T>(selector: (store: EditorStore) => T): T {
+  return useStore(useEditorStoreApi(), selector);
 }

@@ -2,6 +2,7 @@
 // Local-only bridge between the deck editor's AI chat and Claude Code.
 // It runs `claude -p` (headless) with your own Claude Code login, so no API
 // key is needed. Listens on 127.0.0.1 only; never deploy this.
+// The Library's "Create with AI" chat lives in ./deck-agent-chat.mjs.
 //
 //   npm run ai-bridge
 //
@@ -12,6 +13,8 @@ import { mkdtempSync } from "node:fs";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+
+import { claudeEnv, handleDeckAgentRequest } from "./deck-agent-chat.mjs";
 
 const PORT = Number(process.env.AI_BRIDGE_PORT ?? 8787);
 const MODEL = process.env.AI_BRIDGE_MODEL;
@@ -162,13 +165,8 @@ function runClaude(systemPrompt, prompt, timeoutMs = TIMEOUT_MS) {
   ];
   if (MODEL) args.push("--model", MODEL);
 
-  // Allow starting the bridge from a terminal inside Claude Code.
-  const env = { ...process.env };
-  delete env.CLAUDECODE;
-  delete env.CLAUDE_CODE_ENTRYPOINT;
-
   return new Promise((resolve, reject) => {
-    const child = spawn("claude", args, { cwd: WORK_DIR, env, stdio: ["pipe", "pipe", "pipe"] });
+    const child = spawn("claude", args, { cwd: WORK_DIR, env: claudeEnv(), stdio: ["pipe", "pipe", "pipe"] });
     let stdout = "";
     let stderr = "";
     const timer = setTimeout(() => {
@@ -233,7 +231,7 @@ const server = createServer(async (request, response) => {
   const origin = request.headers.origin;
   if (origin && ALLOWED_ORIGIN.test(origin)) {
     response.setHeader("Access-Control-Allow-Origin", origin);
-    response.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+    response.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
     response.setHeader("Access-Control-Allow-Headers", "Content-Type");
   } else if (origin) {
     send(response, 403, { error: "Origin not allowed." });
@@ -244,6 +242,21 @@ const server = createServer(async (request, response) => {
     response.writeHead(204);
     response.end();
     return;
+  }
+  if (request.url?.startsWith("/api/deck-agent/")) {
+    // The deck agent can build decks, so refuse pages that reach this port
+    // under another host name (DNS rebinding).
+    if (![`127.0.0.1:${PORT}`, `localhost:${PORT}`].includes(request.headers.host ?? "")) {
+      send(response, 403, { error: "Local Host header required." });
+      return;
+    }
+    try {
+      if (await handleDeckAgentRequest(request, response, readBody)) return;
+    } catch (error) {
+      console.error(`  ✗ ${error.message}`);
+      if (!response.headersSent) send(response, 500, { error: error.message });
+      return;
+    }
   }
   if (request.method === "POST" && request.url === "/api/deck") {
     try {

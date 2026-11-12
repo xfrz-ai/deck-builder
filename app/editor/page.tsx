@@ -1,10 +1,11 @@
-import { EditorShell } from "@/components/editor/editor-shell";
-import { EditorStoreProvider } from "@/store/editor-store";
+import { Suspense } from "react";
+
+import { EditorEntry } from "@/components/editor/local-deck-entry";
 
 export default function EditorPage() {
   return (
-    <EditorStoreProvider>
-      <EditorShell />
-    </EditorStoreProvider>
+    <Suspense fallback={<main className="min-h-dvh bg-surface-02" />}>
+      <EditorEntry />
+    </Suspense>
   );
 }

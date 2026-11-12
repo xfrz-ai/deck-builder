@@ -2,6 +2,8 @@
 
 Read this before you write a deck concept (`.md`), a PowerPoint (`.pptx`) or a deck spec (`.json`) for the WKND Deck Builder. It explains how the builder turns your file into Weekend (WKND) branded slides, which layouts exist, how much text each one holds, and how to write a file that imports cleanly.
 
+For the complete picture (connecting over MCP, the live build protocol, revisions, error codes), read [KNOWLEDGE.md](KNOWLEDGE.md).
+
 **Short version:** every slide is one of 31 fixed layouts. You don't design slides. You pick a layout for each slide and write text that fits its fields. The layout decides every position, color, font, photo and 3D asset.
 
 ---

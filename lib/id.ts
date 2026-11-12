@@ -1,4 +1,4 @@
-export function createUniqueId(prefix: "slide" | "element" | "component") {
+export function createUniqueId(prefix: "slide" | "element" | "component" | "presentation") {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return `${prefix}-${crypto.randomUUID()}`;
   }

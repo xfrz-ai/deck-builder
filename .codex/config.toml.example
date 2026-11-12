@@ -1,0 +1,13 @@
+# Optional alternative to `npm run deck-agent`.
+# Replace all /absolute/path/deck-builder-v2 paths before enabling.
+# Merge into your project .codex/config.toml; do not overwrite unrelated settings.
+[mcp_servers.deck_builder]
+command = "node"
+args = ["--import", "tsx", "/absolute/path/deck-builder-v2/scripts/deck-mcp.ts"]
+cwd = "/absolute/path/deck-builder-v2"
+required = true
+startup_timeout_sec = 20
+tool_timeout_sec = 60
+
+[mcp_servers.deck_builder.env]
+DECK_DATA_DIR = "/absolute/path/deck-builder-v2/.deck-builder"

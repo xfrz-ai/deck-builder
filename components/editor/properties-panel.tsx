@@ -3,6 +3,7 @@
 import { ChartGantt, ListOrdered, Pencil, Play, Trash2, Users } from "lucide-react";
 import { useState } from "react";
 
+import { ExportButton } from "@/components/editor/export-button";
 import { CardProperties } from "@/components/editor/panels/card-properties";
 import { ImageProperties } from "@/components/editor/panels/image-properties";
 import {
@@ -15,6 +16,11 @@ import { TextBlockProperties } from "@/components/editor/panels/text-block-prope
 import { TextProperties } from "@/components/editor/panels/text-properties";
 import { PresentationMode } from "@/components/editor/presentation-mode";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { AGENDA_VARIANTS } from "@/lib/agenda/agenda-model";
 import { getTeamPeopleCount, TEAM_VARIANTS } from "@/lib/team/team-model";
 import { TIMELINE_VARIANTS } from "@/lib/timeline/timeline-model";
@@ -49,16 +55,25 @@ export function PropertiesPanel() {
         <h2 className="text-[14px] font-semibold tracking-[-0.02em] text-primary">
           Properties
         </h2>
-        <Button
-          disabled={slides.length === 0}
-          onClick={() => {
-            stopTextEditing();
-            setIsPresenting(true);
-          }}
-        >
-          <Play className="size-3.5 fill-current" />
-          Present
-        </Button>
+        <div className="flex items-center gap-1.5">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                aria-label="Present"
+                disabled={slides.length === 0}
+                onClick={() => {
+                  stopTextEditing();
+                  setIsPresenting(true);
+                }}
+                size="icon"
+              >
+                <Play aria-hidden="true" className="size-3.5 fill-current" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Present</TooltipContent>
+          </Tooltip>
+          <ExportButton />
+        </div>
       </div>
 
       {activeSlide?.table && tableSelected ? <TableProperties key={activeSlide.table.id} slide={activeSlide} /> : null}

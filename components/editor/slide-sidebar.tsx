@@ -15,6 +15,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { ArrowLeft, LayoutTemplate, PanelTop } from "lucide-react";
+import Link from "next/link";
 import {
   type KeyboardEvent,
   useCallback,
@@ -27,7 +28,7 @@ import {
 import { SlideLayoutPicker } from "@/components/editor/slide-layout-picker";
 import { SlideThumbnail } from "@/components/editor/slide-thumbnail";
 import { DisabledControl } from "@/components/editor/top-bar";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import type { SlideLayoutId } from "@/lib/layouts/layout-registry";
 import { useEditorStore } from "@/store/editor-store";
 
@@ -149,10 +150,14 @@ export function SlideSidebar() {
           >
             <PanelTop className="size-4" strokeWidth={2} />
           </div>
-          <DisabledControl label="Back navigation is not available in Phase 1">
-            <Button aria-label="Back" disabled size="icon-sm" variant="ghost">
+          <DisabledControl label="All presentations">
+            <Link
+              aria-label="Back to all presentations"
+              className={buttonVariants({ size: "icon-sm", variant: "ghost" })}
+              href="/"
+            >
               <ArrowLeft className="size-4" strokeWidth={1.8} />
-            </Button>
+            </Link>
           </DisabledControl>
         </div>
         <input

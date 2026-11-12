@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { ClientSlideRenderer } from "@/components/editor/client-slide-renderer";
+import { AgentCanvasHighlight } from "@/components/editor/local-deck-session";
 import { ElementContextMenu } from "@/components/editor/element-context-menu";
 import { ImageContextualToolbar } from "@/components/editor/image-contextual-toolbar";
 import { TableCellChoices } from "@/components/editor/table-cell-choices";
@@ -210,6 +211,7 @@ export function CanvasWorkspace() {
                   showLayoutGrid={showLayoutGrid}
                   slide={activeSlide}
                 />
+                <AgentCanvasHighlight />
                 {editingText && tableChoices ? (
                   <TableCellChoices
                     key={editingText.id}

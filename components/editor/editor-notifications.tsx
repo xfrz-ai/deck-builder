@@ -8,8 +8,10 @@ import {
   EDITOR_NOTIFICATION_EVENT,
   type EditorNotificationDetail,
 } from "@/lib/editor/notifications";
+import { cn } from "@/lib/utils";
 
-export function EditorNotifications() {
+// Sits left of the editor's properties panel unless `className` moves it.
+export function EditorNotifications({ className }: { className?: string } = {}) {
   const [notification, setNotification] =
     useState<EditorNotificationDetail | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -53,7 +55,10 @@ export function EditorNotifications() {
   return (
     <div
       aria-live="polite"
-      className="fixed bottom-6 right-[304px] z-50 flex max-w-sm items-start gap-3 rounded-2xl border border-stroke-01 bg-surface-01 px-4 py-3 text-[13px] text-primary shadow-popover"
+      className={cn(
+        "fixed bottom-6 right-[304px] z-50 flex max-w-sm items-start gap-3 rounded-2xl border border-stroke-01 bg-surface-01 px-4 py-3 text-[13px] text-primary shadow-popover",
+        className,
+      )}
       role={notification.tone === "error" ? "alert" : "status"}
     >
       <Icon

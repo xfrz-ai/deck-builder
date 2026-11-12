@@ -11,7 +11,7 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). `/` redirects to `/editor`.
+Open [http://localhost:3000](http://localhost:3000) to see the presentation Library. Click a presentation to open its editor.
 
 The editor needs a screen at least **1280px wide**. Narrower windows show a notice instead of the editor.
 
@@ -30,8 +30,9 @@ The editor needs a screen at least **1280px wide**. Narrower windows show a noti
 - **Import from documents (local only):** turn a Markdown or PowerPoint file into WKND slides with Claude, then review and import. Use **Import** in the top bar. See [Import from MD or PPTX](#import-from-md-or-pptx-local-only).
 - **Deck spec import:** build a whole deck from a JSON spec, for example one written by an AI agent. See [docs/deck-spec](docs/deck-spec/README.md).
 - **Guide for AI agents:** how to write a `.md` concept, `.pptx` or deck spec that imports cleanly, with every layout and its text limits. See [docs/agent-guide](docs/agent-guide/README.md).
+- **Deck Agent (local, Codex or Claude):** discuss the brief and storyline with Codex CLI, Claude Code CLI or Claude Desktop, then the agent builds it; a new presentation appears in the Library while the agent builds it slide by slide. Click the card to watch with Follow AI, a canvas highlight, and completion status. Ten MCP stdio tools, including a shared [deck playbook](docs/agent-guide/playbook.md) for workflow and copy voice, use the existing builder and local JSON storage. Live updates protect drafts and reconnect after interruptions. See [local agent setup](docs/local-deck-agent.md), [MVP plan](docs/local-deck-agent-plan.md), and [Live Canvas plan](docs/live-canvas-agent-plan.md). Manual editor changes use Save; text validation is estimated.
 - **AI assistant (local only):** edit Team, Agenda and Timeline content by chatting. See [AI assistant](#ai-assistant-local-only).
-- **Autosave:** the deck is saved to the browser's `localStorage`, with undo/redo.
+- **Autosave:** browser Library decks are saved to IndexedDB, with undo/redo. Older localStorage decks migrate into the Library. CLI decks use the local service and explicit editor Save.
 
 ### Keyboard shortcuts
 
@@ -60,6 +61,12 @@ In presentation mode, use `→`, `Space`, `Enter` or `N` to go forward, `←`, `
 | `npm run preview` | Build, then serve `./out` locally with `wrangler dev` |
 | `npm run deploy` | Build and deploy to Cloudflare Workers |
 | `npm run ai-bridge` | Start the local AI assistant bridge (dev only) |
+| `npm run deck-service` | Start the authenticated local deck repository/service |
+| `npm run deck-agent` | Open the connected Library and start project-scoped Codex with deck MCP tools |
+| `npm run deck-agent:claude` | Same, with Claude Code CLI |
+| `npm run deck-agent:desktop-config -- --write` | Add the deck MCP server to Claude Desktop (backs up its config first) |
+| `npm run test:deck-agent` | Test the repository, MCP, live updates, and agent jobs |
+| `npm run test:deck-agent:e2e -- --library` | Test Library discovery and incremental live building in isolated Chrome |
 
 ## AI assistant (local only)
 
@@ -108,7 +115,8 @@ Placeholders such as `[Nama Klien]` are kept as written. A long document can tak
 ## Project structure
 
 ```
-app/                  Next.js routes (/ → /editor, /deck-spec/catalog.json)
+app/                  Next.js routes (Library, /editor, /preview, /deck-spec/catalog.json)
+components/home/      Presentation Library and live agent cards
 components/editor/    Editor UI: canvas, sidebars, toolbars, dialogs, AI chat
 components/ui/        Shared primitives (button, tooltip, menus, switch)
 store/editor-store.tsx  Zustand store: deck state, actions, undo/redo, persistence
@@ -123,7 +131,10 @@ lib/
   presentation/       Persistence, validation, default deck
   ai/                 AI chat adapters and bridge client
   deck-spec/          Deck spec → presentation builder and layout catalog
+  deck-service/       Authenticated loopback service and atomic JSON repository
+  local-deck/         Browser service client, events and draft-safe live session
 scripts/ai-bridge.mjs Local bridge between the AI chat and Claude Code
+scripts/deck-*.{ts,mjs} Local service, MCP stdio, and Codex/Claude launchers
 public/assets/        Brand images, 3D illustrations, placeholder photos
 ```
 
@@ -143,7 +154,7 @@ Component slides (Agenda, Team, Timeline, Table) also store their **data** on th
 
 - **Next.js 16 differs from older versions.** Read the bundled docs in `node_modules/next/dist/docs/` before using Next APIs (see [AGENTS.md](AGENTS.md)).
 - **The app is a static export** (`output: "export"`). There is no server, so API routes that read the request (e.g. `POST` handlers) don't work, even in `next dev`.
-- **Storage is per browser.** The deck lives in `localStorage` under `presentation-editor-storage`, and images are stored inline. Large images can fill the quota, and the editor warns when storage is full.
+- **Browser storage is per browser.** Library decks live in IndexedDB (`deck-library`); the legacy `presentation-editor-storage` key is kept for migration/backup. Images are stored inline. CLI decks live in `.deck-builder/decks` and appear alongside browser decks while connected to the local service.
 
 ## Build
 

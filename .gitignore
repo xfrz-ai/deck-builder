@@ -43,3 +43,6 @@ next-env.d.ts
 # cloudflare
 .wrangler/
 .dev.vars*
+
+# local deck agent data and credentials
+.deck-builder/

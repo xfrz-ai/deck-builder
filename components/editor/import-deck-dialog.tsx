@@ -14,7 +14,7 @@ import { notifyEditor } from "@/lib/editor/notifications";
 import { estimateComponentText } from "@/lib/text/component-text";
 import { getCanvasFont, measureTextWidth } from "@/lib/text/measure-text";
 import { cn } from "@/lib/utils";
-import { useEditorStore } from "@/store/editor-store";
+import type { Presentation } from "@/types/presentation";
 
 const CATALOG_URL = "/deck-spec/catalog.json";
 const MAX_SPEC_BYTES = 5_000_000;
@@ -99,8 +99,15 @@ function stageLabel(stage: DeckGenerationStage) {
     : `Fixing ${stage.problems} problem${stage.problems === 1 ? "" : "s"} (round ${stage.attempt})…`;
 }
 
-export function ImportDeckDialog({ onClose }: { onClose: () => void }) {
-  const importDeck = useEditorStore((state) => state.importDeck);
+export type ImportDeckMode = "replace" | "append" | "new";
+
+// In the editor ("replace"/"append") the slides go into the open deck. On the
+// home page ("new") they become a new presentation.
+export function ImportDeckDialog({ onClose, onImport, target = "current" }: {
+  onClose: () => void;
+  onImport: (presentation: Presentation, mode: ImportDeckMode) => void | Promise<void>;
+  target?: "current" | "new";
+}) {
   const measure = useDeckTextMeasure();
   const [tab, setTab] = useState<Tab>(AI_BRIDGE_ENABLED ? "document" : "json");
   const [source, setSource] = useState("");
@@ -180,14 +187,14 @@ export function ImportDeckDialog({ onClose }: { onClose: () => void }) {
     setPreviewIndex(0);
   };
 
-  const handleImport = () => {
+  const handleImport = async () => {
     if (!result || slides.length === 0) return;
-    importDeck(result.presentation, mode);
-    notifyEditor(
-      `${mode === "replace" ? "Deck replaced with" : "Added"} ${slides.length} slide${slides.length === 1 ? "" : "s"}. Press Cmd/Ctrl+Z to undo.`,
-      "info",
-    );
-    onClose();
+    try {
+      await onImport(result.presentation, target === "new" ? "new" : mode);
+      onClose();
+    } catch (error) {
+      notifyEditor(error instanceof Error ? error.message : "The deck could not be imported.");
+    }
   };
 
   const slideLabel = `${slides.length} slide${slides.length === 1 ? "" : "s"}`;
@@ -195,6 +202,7 @@ export function ImportDeckDialog({ onClose }: { onClose: () => void }) {
     ? "Import"
     : errorCount > 0
       ? "Import anyway"
+    : target === "new" ? `Create presentation (${slideLabel})`
     : mode === "replace" ? `Replace deck (${slideLabel})` : `Add ${slideLabel}`;
 
   return (
@@ -299,12 +307,14 @@ export function ImportDeckDialog({ onClose }: { onClose: () => void }) {
 
       {slides.length ? (
         <>
-          <Segmented
-            label="Import mode"
-            onChange={setMode}
-            options={[{ value: "replace", label: "Replace deck" }, { value: "append", label: "Add to deck" }]}
-            value={mode}
-          />
+          {target === "current" ? (
+            <Segmented
+              label="Import mode"
+              onChange={setMode}
+              options={[{ value: "replace", label: "Replace deck" }, { value: "append", label: "Add to deck" }]}
+              value={mode}
+            />
+          ) : null}
           {slides.length > 1 ? (
             <div className="flex items-center justify-between">
               <Button aria-label="Previous slide" disabled={index === 0} onClick={() => setPreviewIndex(index - 1)} size="icon" variant="ghost">
