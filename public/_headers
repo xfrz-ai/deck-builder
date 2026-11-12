@@ -1,0 +1,4 @@
+# Cloudflare static asset headers. The deck guide has non-ASCII text (≤, ≈, —),
+# so browsers need the charset to show it correctly.
+/deck-guide.md
+  Content-Type: text/markdown; charset=utf-8
