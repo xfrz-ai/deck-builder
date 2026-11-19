@@ -14,6 +14,17 @@ const LOGICAL_PIXELS_PER_POINT = 2;
 const MAX_RASTER_DIMENSION = 4096;
 // SVGs are rasterized at this multiple of their slide size.
 const SVG_RASTER_SCALE = 4;
+// Each font's natural line height (ascender + descender + line gap, as a
+// multiple of the font size), read from the font files. PowerPoint and Google
+// Slides measure percentage line spacing against this value.
+const FONT_LINE_HEIGHTS: Record<string, number> = {
+  Arial: 1.15,
+  Georgia: 1.136,
+  Inter: 1.21,
+  "Plus Jakarta Sans": 1.26,
+  "Times New Roman": 1.15,
+};
+const DEFAULT_FONT_LINE_HEIGHT = 1.2;
 
 interface PowerPointBox {
   h: number;
@@ -308,6 +319,8 @@ function addShapeElement(
 
 function addTextElement(slide: PptxGenJS.Slide, element: TextElement) {
   const color = toHexColor(element.color);
+  const fontLineHeight =
+    FONT_LINE_HEIGHTS[element.fontFamily] ?? DEFAULT_FONT_LINE_HEIGHT;
 
   slide.addText(element.text, {
     ...getPowerPointBox(element),
@@ -319,7 +332,11 @@ function addTextElement(slide: PptxGenJS.Slide, element: TextElement) {
     fontFace: element.fontFamily,
     fontSize: logicalPixelsToPoints(element.fontSize),
     italic: element.italic,
-    lineSpacingMultiple: element.lineHeight,
+    // The canvas line height is a multiple of the font size, while percentage
+    // spacing multiplies the font's natural line height, so convert between
+    // the two. Exact point spacing would also match in PowerPoint, but Google
+    // Slides ignores it on import.
+    lineSpacingMultiple: element.lineHeight / fontLineHeight,
     margin: logicalPixelsToPoints(element.padding ?? 0),
     objectName: element.id,
     rotate: element.rotation,
