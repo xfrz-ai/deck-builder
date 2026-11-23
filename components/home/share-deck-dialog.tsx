@@ -104,11 +104,11 @@ export function ShareDeckDialog({ deck, onClose }: { deck: DeckSummary; onClose:
           }}
         >
           <label className="min-w-0 flex-1">
-            <span className="sr-only">Colleague&apos;s work email</span>
+            <span className="sr-only">Colleague&apos;s email</span>
             <input
               className="h-10 w-full rounded-xl border border-stroke-01 bg-surface-01 px-3 text-[13px] font-medium text-primary outline-none transition-colors placeholder:font-normal placeholder:text-muted-foreground hover:border-stroke-02 focus:border-stroke-02 focus-visible:ring-2 focus-visible:ring-ring/35"
               onChange={(event) => setEmail(event.target.value)}
-              placeholder="Colleague's work email"
+              placeholder="Colleague's email"
               ref={inputRef}
               type="email"
               value={email}

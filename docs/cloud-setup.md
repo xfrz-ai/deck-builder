@@ -1,6 +1,6 @@
 # Cloud decks (Supabase)
 
-Dengan Supabase, deck tersimpan di akun masing-masing, bukan di browser. Tim WKND login dengan email kantor, bisa membuka deck dari laptop mana pun, dan bisa membagikan deck ke rekan.
+Dengan Supabase, deck tersimpan di akun masing-masing, bukan di browser. Tim WKND login dengan email (kode atau link lewat email), bisa membuka deck dari laptop mana pun, dan bisa membagikan deck ke rekan.
 
 ## Arsitektur
 
@@ -9,7 +9,7 @@ Browser (editor, static export di Cloudflare)
    │  supabase-js + anon key
    ▼
 Supabase
-   ├─ Auth          login kode email, hanya domain yang diizinkan
+   ├─ Auth          login kode email (semua alamat email)
    ├─ public.decks  satu baris per deck, isi JSON di kolom `presentation`
    ├─ deck_shares   rekan (per email) yang boleh membuka dan mengedit
    └─ Storage       bucket `deck-images` untuk foto slide
@@ -26,21 +26,17 @@ Tidak ada server sendiri. Browser langsung mengakses Supabase, dan hak akses dij
 ## Setup sekali (Supabase dashboard)
 
 1. **Database.** Buka **SQL Editor**, tempel isi [supabase/migrations/20261123000000_cloud_decks.sql](../supabase/migrations/20261123000000_cloud_decks.sql), lalu **Run**. Script aman dijalankan ulang.
-2. **Domain email.** Script mengizinkan `weekendinc.com`. Tambah domain lain di SQL Editor:
-   ```sql
-   insert into private.allowed_email_domains (domain) values ('domainlain.com');
-   ```
-3. **URL.** **Authentication → URL Configuration**:
+2. **URL.** **Authentication → URL Configuration**:
    - Site URL: `https://deck-builder.xfrz-ai.workers.dev`
    - Redirect URLs: `https://deck-builder.xfrz-ai.workers.dev/**` dan `http://localhost:3000/**`
-4. **Template email.** **Authentication → Emails → Templates**. Edit template **Magic Link** dan **Confirm signup** supaya memuat kode:
+3. **Template email.** **Authentication → Emails → Templates**. Edit template **Magic Link** dan **Confirm signup** supaya memuat kode:
    ```html
    <h2>Masuk ke Deck</h2>
    <p>Kode masuk kamu: <strong>{{ .Token }}</strong></p>
    <p>Atau klik link ini: <a href="{{ .ConfirmationURL }}">Masuk ke Deck</a></p>
    ```
    User baru menerima **Confirm signup**, user lama menerima **Magic Link**.
-5. **SMTP.** **Authentication → Emails → SMTP Settings**. Wajib untuk tim: pengirim bawaan Supabase hanya mengirim ke anggota tim project Supabase dan dibatasi beberapa email per jam. Pakai layanan seperti Resend, Postmark atau SMTP kantor. Setelah itu naikkan batas di **Authentication → Rate Limits** bila perlu.
+4. **SMTP.** **Authentication → Emails → SMTP Settings**. Wajib untuk tim: pengirim bawaan Supabase hanya mengirim ke anggota tim project Supabase dan dibatasi beberapa email per jam. Pakai layanan seperti Resend, Postmark atau SMTP kantor. Setelah itu naikkan batas di **Authentication → Rate Limits** bila perlu.
 
 ## Konfigurasi app
 
@@ -62,6 +58,7 @@ NEXT_PUBLIC_DECK_STORAGE=browser npm run build && npm run test:deck-agent:e2e
 
 ## Batasan saat ini
 
+- Siapa pun yang tahu URL app bisa membuat akun. Mereka hanya melihat deck milik sendiri dan deck yang dibagikan ke mereka. Kalau nanti perlu dibatasi ke email kantor, bisa ditambah lewat trigger di database.
 - Satu peran share: **edit**. Belum ada akses lihat-saja.
 - Belum ada edit bersamaan secara real-time. Dua orang yang mengedit deck yang sama di waktu bersamaan: yang menyimpan belakangan diminta reload.
 - Foto di bucket publik dengan nama acak (hash SHA-256 isi file). Siapa pun yang memegang URL-nya bisa membuka foto itu.

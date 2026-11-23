@@ -4,7 +4,7 @@
 -- every statement is idempotent.
 --
 -- What it sets up:
--- 1. Sign-in limited to allowed email domains (private.allowed_email_domains).
+-- 1. Sign-in with any email (email code / magic link).
 -- 2. public.decks: one row per presentation, JSON in `presentation`.
 -- 3. public.deck_shares: colleagues (by email) who may open and edit a deck.
 -- 4. Storage bucket `deck-images` for slide photos.
@@ -31,47 +31,14 @@ $$;
 grant execute on function private.current_email() to authenticated;
 
 -- ---------------------------------------------------------------------------
--- 1. Allowed email domains
+-- 1. Sign-in is open to any email address
 -- ---------------------------------------------------------------------------
 
-create table if not exists private.allowed_email_domains (
-  domain text primary key check (domain = lower(domain))
-);
-
--- Add more domains with another insert; remove one to lock it out of new
--- sign-ups (existing accounts keep working).
-insert into private.allowed_email_domains (domain)
-values ('weekendinc.com')
-on conflict (domain) do nothing;
-
-create or replace function private.enforce_email_domain()
-returns trigger
-language plpgsql
-security definer
-set search_path = ''
-as $$
-begin
-  if new.email is null or not exists (
-    select 1
-    from private.allowed_email_domains d
-    where d.domain = lower(split_part(new.email, '@', 2))
-  ) then
-    raise exception 'EMAIL_DOMAIN_NOT_ALLOWED'
-      using hint = 'Sign in with your WKND work email.';
-  end if;
-  return new;
-end;
-$$;
-
--- Supabase Auth inserts users as supabase_auth_admin.
-grant usage on schema private to supabase_auth_admin;
-grant select on private.allowed_email_domains to supabase_auth_admin;
-grant execute on function private.enforce_email_domain() to supabase_auth_admin;
-
+-- An earlier draft limited sign-up to allowed domains. Remove it if it was
+-- applied.
 drop trigger if exists enforce_email_domain on auth.users;
-create trigger enforce_email_domain
-  before insert or update of email on auth.users
-  for each row execute function private.enforce_email_domain();
+drop function if exists private.enforce_email_domain();
+drop table if exists private.allowed_email_domains;
 
 -- ---------------------------------------------------------------------------
 -- 2. Decks

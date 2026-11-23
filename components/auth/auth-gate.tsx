@@ -28,7 +28,7 @@ const signOut = async () => {
   await getSupabase().auth.signOut();
 };
 
-// With cloud storage configured, everything behind this gate needs a WKND
+// With cloud storage configured, everything behind this gate needs an
 // account. Without it the app works as before, with no sign-in.
 export function AuthGate({ children }: { children: ReactNode }) {
   if (!CLOUD_ENABLED) return children;
@@ -72,9 +72,6 @@ function CloudAuthGate({ children }: { children: ReactNode }) {
 }
 
 function describeAuthError(message: string) {
-  if (/EMAIL_DOMAIN_NOT_ALLOWED|Database error saving new user/i.test(message)) {
-    return "Use your WKND work email to sign in.";
-  }
   if (/rate limit/i.test(message)) {
     return "Too many sign-in emails were sent. Wait a few minutes and try again.";
   }
@@ -138,10 +135,10 @@ function SignInScreen() {
           <>
             <h1 className="text-xl font-medium tracking-[-0.03em]">Sign in to Deck</h1>
             <p className="mt-1.5 text-[13px] leading-5 text-muted-foreground">
-              Enter your WKND work email. We&apos;ll send you a sign-in code.
+              Enter your email. We&apos;ll send you a sign-in code.
             </p>
             <label className="mt-5 block text-xs font-medium text-muted-foreground">
-              Work email
+              Email
               <input
                 autoComplete="email"
                 autoFocus

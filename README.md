@@ -33,7 +33,7 @@ Good to know:
 
 - **Fixing issues:** the import lists issues per slide. Red errors mean text that doesn't fit or a wrong number of items. Paste the list back to your agent and it sends a corrected JSON.
 - **Revisions:** ask your agent for changes. To apply them, open the presentation, click **Import** in the top bar, paste the new JSON and choose **Replace deck**. Replacing discards changes you made by hand, so make small text edits in the editor instead.
-- **Storage:** sign in with your WKND work email; decks are saved to your account and can be shared with colleagues (see [docs/cloud-setup.md](docs/cloud-setup.md)). Use a laptop or desktop, because the editor needs a screen at least 1280px wide.
+- **Storage:** sign in with your email; decks are saved to your account and can be shared with colleagues (see [docs/cloud-setup.md](docs/cloud-setup.md)). Use a laptop or desktop, because the editor needs a screen at least 1280px wide.
 
 ## Using the editor
 
