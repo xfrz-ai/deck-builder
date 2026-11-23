@@ -1,4 +1,3 @@
-import { applyImageCrossOrigin } from "@/lib/image/cross-origin";
 import type { MockupDevice } from "@/lib/mockup/mockup-devices";
 import {
   expandQuad,
@@ -24,7 +23,6 @@ function loadImage(src: string) {
 
     image.onload = () => resolve(image);
     image.onerror = () => reject(new Error("The mockup image could not load."));
-    applyImageCrossOrigin(image, src);
     image.src = src;
   });
 }

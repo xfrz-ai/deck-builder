@@ -1,6 +1,6 @@
 "use client";
 
-import { Copy, Ellipsis, SquarePen, Trash2, UserPlus } from "lucide-react";
+import { Copy, Ellipsis, SquarePen, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { memo, useEffect, useRef, useState } from "react";
 
@@ -103,7 +103,6 @@ interface PresentationCardProps {
   onDelete?: (deck: DeckSummary) => void;
   onDuplicate?: (deck: DeckSummary) => void;
   onOpen: (deck: DeckSummary) => void;
-  onShare?: (deck: DeckSummary) => void;
   href?: string;
   status?: string;
   working?: boolean;
@@ -116,14 +115,12 @@ export const PresentationCard = memo(function PresentationCard({
   onDelete,
   onDuplicate,
   onOpen,
-  onShare,
   href,
   status,
   working,
   loadCover,
 }: PresentationCardProps) {
   const title = deck.title.trim() || UNTITLED_PRESENTATION;
-  const sharedBy = deck.isOwner === false ? deck.ownerEmail : undefined;
 
   return (
     <article data-deck-id={deck.id} data-agent-status={working ? "working" : undefined} className="group relative rounded-[1.25rem] border border-stroke-01 bg-surface-01 p-2 transition-shadow hover:shadow-toolbar has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring/35">
@@ -146,14 +143,9 @@ export const PresentationCard = memo(function PresentationCard({
             {" · "}
             {formatEdited(deck.updatedAt, now)}
           </p>
-          {sharedBy ? (
-            <p className="mt-0.5 truncate text-xs text-muted-foreground" title={sharedBy}>
-              Shared by {sharedBy}
-            </p>
-          ) : null}
         </div>
 
-        {onDelete || onDuplicate || onShare ? <DropdownMenu modal={false}>
+        {onDelete || onDuplicate ? <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
             <Button
               aria-label={`More actions for ${title}`}
@@ -173,16 +165,12 @@ export const PresentationCard = memo(function PresentationCard({
               <Copy aria-hidden="true" className="size-3.5" strokeWidth={1.8} />
               Duplicate
             </DropdownMenuItem> : null}
-            {onShare && deck.isOwner ? <DropdownMenuItem onSelect={() => onShare(deck)}>
-              <UserPlus aria-hidden="true" className="size-3.5" strokeWidth={1.8} />
-              Share
-            </DropdownMenuItem> : null}
             {onDelete ? <DropdownMenuItem
               className="text-[#B3361A] focus:bg-[#E04E2B]/10 focus:text-[#B3361A]"
               onSelect={() => onDelete(deck)}
             >
               <Trash2 aria-hidden="true" className="size-3.5" strokeWidth={1.8} />
-              {sharedBy ? "Remove" : "Delete"}
+              Delete
             </DropdownMenuItem> : null}
           </DropdownMenuContent>
         </DropdownMenu> : null}

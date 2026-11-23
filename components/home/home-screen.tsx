@@ -4,11 +4,9 @@ import {
   ArrowUpDown,
   Check,
   ChevronDown,
-  Cloud,
   HardDrive,
   House,
   LoaderCircle,
-  LogOut,
   PanelTop,
   Plus,
   Presentation as PresentationIcon,
@@ -28,11 +26,9 @@ import {
   useSyncExternalStore,
 } from "react";
 
-import { useCloudUser } from "@/components/auth/auth-gate";
 import { EditorNotifications } from "@/components/editor/editor-notifications";
 import { ImportDeckDialog } from "@/components/editor/import-deck-dialog";
 import { DeckAgentPanel } from "@/components/home/deck-agent-panel";
-import { MoveToCloudBanner } from "@/components/home/move-to-cloud-banner";
 import {
   PresentationCard,
   PresentationCardSkeleton,
@@ -50,17 +46,15 @@ import { AI_BRIDGE_ENABLED } from "@/lib/ai/bridge-client";
 import { notifyEditor } from "@/lib/editor/notifications";
 import {
   createDeck,
-  DECKS_IN_CLOUD,
   deleteDeck,
   duplicateDeck,
   listDecks,
   type DeckSummary,
-} from "@/lib/presentation/deck-library";
+} from "@/lib/presentation/library";
 import { cn } from "@/lib/utils";
 import type { Presentation } from "@/types/presentation";
 import { useServiceLibrary } from "@/hooks/use-service-library";
 import { ServicePresentationCard, serviceDeckHref } from "@/components/home/service-presentation-card";
-import { ShareDeckDialog } from "@/components/home/share-deck-dialog";
 import type { ServiceDeckSummary } from "@/lib/local-deck/service-library";
 import { deleteLocalDeck } from "@/lib/local-deck/client";
 
@@ -113,9 +107,6 @@ export function HomeScreen() {
   const [isAiOpen, setIsAiOpen] = useState(false);
   const closeAi = useCallback(() => setIsAiOpen(false), []);
   const [pendingDelete, setPendingDelete] = useState<DeckSummary | null>(null);
-  const [sharing, setSharing] = useState<DeckSummary | null>(null);
-  const closeShare = useCallback(() => setSharing(null), []);
-  const cloudUser = useCloudUser();
   const searchRef = useRef<HTMLInputElement>(null);
   const now = useSyncExternalStore(subscribeToMinutes, currentMinute, serverMinute);
   const shortcutLabel = useSyncExternalStore(subscribeNever, () => (isMac() ? "⌘K" : "Ctrl K"), () => "⌘K");
@@ -177,7 +168,7 @@ export function HomeScreen() {
     try {
       router.push(presentationHref(await createDeck()));
     } catch {
-      notifyEditor(DECKS_IN_CLOUD ? "A new presentation could not be created." : "A new presentation could not be created in this browser.");
+      notifyEditor("A new presentation could not be created in this browser.");
       setIsCreating(false);
     }
   };
@@ -287,36 +278,15 @@ export function HomeScreen() {
           ) : null}
         </div>
 
-        {cloudUser ? (
-          <div className="m-3 mt-0 rounded-xl bg-surface-03 p-3">
-            <p className="flex items-center gap-2 text-xs font-semibold text-primary">
-              <Cloud aria-hidden="true" className="size-3.5" strokeWidth={1.8} />
-              Saved to your account
-            </p>
-            <p className="mt-1 truncate text-[11px] leading-4 text-muted-foreground" title={cloudUser.email}>
-              {cloudUser.email}
-            </p>
-            <Button
-              className="-ml-2 mt-1.5 h-7 px-2 text-[11px] text-muted-foreground hover:text-primary"
-              onClick={() => void cloudUser.signOut()}
-              size="sm"
-              variant="ghost"
-            >
-              <LogOut aria-hidden="true" className="size-3.5" strokeWidth={1.8} />
-              Sign out
-            </Button>
-          </div>
-        ) : (
-          <div className="m-3 mt-0 rounded-xl bg-surface-03 p-3">
-            <p className="flex items-center gap-2 text-xs font-semibold text-primary">
-              <HardDrive aria-hidden="true" className="size-3.5" strokeWidth={1.8} />
-              Saved in this browser
-            </p>
-            <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
-              Presentations stay on this device. Export to PowerPoint to share them.
-            </p>
-          </div>
-        )}
+        <div className="m-3 mt-0 rounded-xl bg-surface-03 p-3">
+          <p className="flex items-center gap-2 text-xs font-semibold text-primary">
+            <HardDrive aria-hidden="true" className="size-3.5" strokeWidth={1.8} />
+            Saved in this browser
+          </p>
+          <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
+            Presentations stay on this device. Export to PowerPoint to share them.
+          </p>
+        </div>
       </aside>
 
       {/* Leaves room for the AI panel on wide screens so new decks stay visible. */}
@@ -348,14 +318,10 @@ export function HomeScreen() {
         </header>
 
         <main className="px-5 pb-12 pt-6">
-          {/* The local CLI agent is a development tool; cloud users don't need the hint. */}
-          {!DECKS_IN_CLOUD || service.connection ? (
-            <p className="mb-4 text-xs text-muted-foreground" role="status" data-testid="agent-library-status">
-              {service.connection ? service.status === "connected" ? "CLI agent connected. New presentations appear here automatically." : "Reconnecting to the local agent..." : "Start npm run deck-agent to connect this Library to your CLI."}
-              {service.message ? ` ${service.message}` : ""}
-            </p>
-          ) : null}
-          {cloudUser ? <MoveToCloudBanner onMoved={refresh} /> : null}
+          <p className="mb-4 text-xs text-muted-foreground" role="status" data-testid="agent-library-status">
+            {service.connection ? service.status === "connected" ? "CLI agent connected. New presentations appear here automatically." : "Reconnecting to the local agent..." : "Start npm run deck-agent to connect this Library to your CLI."}
+            {service.message ? ` ${service.message}` : ""}
+          </p>
           <div className="mb-5 flex items-center justify-between gap-4">
             <h1 className="text-[22px] font-medium tracking-[-0.03em] text-primary">Recent presentations</h1>
 
@@ -419,7 +385,6 @@ export function HomeScreen() {
                     onDelete={setPendingDelete}
                     onDuplicate={handleDuplicate}
                     onOpen={openDeck}
-                    onShare={cloudUser ? setSharing : undefined}
                   />
                 </li>
               ))}
@@ -445,8 +410,6 @@ export function HomeScreen() {
         />
       ) : null}
 
-      {sharing ? <ShareDeckDialog deck={sharing} onClose={closeShare} /> : null}
-
       {pendingDelete ? (
         <DeleteDialog
           deck={pendingDelete}
@@ -466,7 +429,6 @@ function DeleteDialog({ deck, onCancel, onConfirm }: {
   const titleId = useId();
   const descriptionId = useId();
   const cancelRef = useRef<HTMLButtonElement>(null);
-  const sharedWithMe = deck.isOwner === false;
 
   useEffect(() => {
     // After the menu that opened this dialog has returned focus.
@@ -495,16 +457,12 @@ function DeleteDialog({ deck, onCancel, onConfirm }: {
         role="alertdialog"
       >
         <h2 className="text-[15px] font-semibold tracking-[-0.02em] text-primary" id={titleId}>
-          {sharedWithMe ? "Remove presentation?" : "Delete presentation?"}
+          Delete presentation?
         </h2>
         <p className="mt-1.5 text-[13px] leading-5 text-muted-foreground" id={descriptionId}>
           “{deck.title.trim() || UNTITLED_PRESENTATION}” {isServiceDeck(deck)
             ? "will be removed from the local deck service and Library. An active agent will no longer be able to update it."
-            : sharedWithMe
-              ? `will be removed from your Library. ${deck.ownerEmail ?? "The owner"} can share it with you again.`
-              : DECKS_IN_CLOUD
-                ? "will be permanently deleted, also for everyone it's shared with."
-                : "will be permanently removed from this browser."}
+            : "will be permanently removed from this browser."}
         </p>
         <div className="mt-5 flex justify-end gap-2">
           <Button onClick={onCancel} ref={cancelRef} variant="outline">
@@ -514,7 +472,7 @@ function DeleteDialog({ deck, onCancel, onConfirm }: {
             className="bg-none bg-[#E04E2B] text-white shadow-none hover:bg-[#CC4524]"
             onClick={onConfirm}
           >
-            {sharedWithMe ? "Remove" : "Delete"}
+            Delete
           </Button>
         </div>
       </div>

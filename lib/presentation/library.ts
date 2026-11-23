@@ -30,9 +30,6 @@ export interface DeckSummary {
   coverSlide: Slide | null;
   createdAt: number;
   updatedAt: number;
-  // Cloud decks only: who owns the deck. Others see it because it was shared.
-  ownerEmail?: string;
-  isOwner?: boolean;
 }
 
 export interface DeckRecord {
