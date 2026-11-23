@@ -5,6 +5,7 @@ A browser-based editor for Weekend (WKND) presentations. Pick a slide layout, ed
 **Open the app:** <https://deck-builder.xfrz-ai.workers.dev>
 
 - [Make a deck with your AI agent](#make-a-deck-with-your-ai-agent): no install needed
+- [Desktop app](docs/desktop-app.md): the builder, deck service and AI chat in one Electron app (`npm run desktop`)
 - [Using the editor](#using-the-editor)
 - [Run it locally](#run-it-locally)
 - [Local AI features](#local-ai-features): the live Deck Agent, Ask AI and document import

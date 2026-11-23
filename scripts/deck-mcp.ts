@@ -22,7 +22,8 @@ async function call(name: string, args: unknown) {
   }
 }
 // Shared by every agent client; read per call so edits apply without restarting.
-const PLAYBOOK_PATH = resolve(dirname(fileURLToPath(import.meta.url)), "../docs/agent-guide/playbook.md");
+// The desktop app ships the playbook inside its bundle and says where.
+const PLAYBOOK_PATH = process.env.DECK_PLAYBOOK_PATH || resolve(dirname(fileURLToPath(import.meta.url)), "../docs/agent-guide/playbook.md");
 const readPlaybook = () => readFile(PLAYBOOK_PATH, "utf8");
 
 async function main() {

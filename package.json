@@ -2,6 +2,7 @@
   "name": "deck-builder-v2",
   "version": "0.1.0",
   "private": true,
+  "main": "dist-desktop/shell.cjs",
   "scripts": {
     "dev": "next dev",
     "build": "next build --webpack",
@@ -16,7 +17,13 @@
     "test:deck-agent:e2e": "tsx tests/deck-agent-e2e.ts",
     "deck-agent": "node scripts/deck-agent.mjs",
     "deck-agent:claude": "node scripts/deck-agent.mjs claude",
-    "deck-agent:desktop-config": "node scripts/claude-desktop-config.mjs"
+    "deck-agent:desktop-config": "node scripts/claude-desktop-config.mjs",
+    "desktop": "tsx scripts/build-desktop.ts && node scripts/run-desktop.mjs",
+    "desktop:quick": "tsx scripts/build-desktop.ts --skip-renderer && node scripts/run-desktop.mjs",
+    "desktop:build": "tsx scripts/build-desktop.ts",
+    "desktop:package": "tsx scripts/build-desktop.ts && tsx scripts/package-desktop.ts",
+    "desktop:release-bundle": "tsx scripts/release-desktop-bundle.ts",
+    "test:desktop": "tsx --test tests/desktop-bundles.test.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -45,6 +52,9 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "electron": "45.2.3",
+    "electron-builder": "26.18.1",
+    "esbuild": "0.28.2",
     "eslint": "^9",
     "eslint-config-next": "16.3.7",
     "tailwindcss": "^4",

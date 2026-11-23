@@ -46,6 +46,9 @@ export function claudeEnv() {
   const env = { ...process.env };
   delete env.CLAUDECODE;
   delete env.CLAUDE_CODE_ENTRYPOINT;
+  // Set by the desktop app to run this bridge on Electron's binary; the MCP
+  // server config sets it again where it is needed.
+  delete env.ELECTRON_RUN_AS_NODE;
   return env;
 }
 

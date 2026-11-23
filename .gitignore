@@ -23,6 +23,8 @@
 # misc
 .DS_Store
 *.pem
+# The desktop app's public key for bundle updates (the private key never goes in the repo).
+!electron/bundle-public-key.pem
 
 # debug
 npm-debug.log*
@@ -46,3 +48,6 @@ next-env.d.ts
 
 # local deck agent data and credentials
 .deck-builder/
+
+# desktop app build output
+/dist-desktop/
