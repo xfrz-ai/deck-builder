@@ -2,6 +2,8 @@
 
 import { useCallback, useSyncExternalStore } from "react";
 
+import { applyImageCrossOrigin } from "@/lib/image/cross-origin";
+
 type ImageLoadStatus = "error" | "loaded" | "loading";
 
 interface ImageSnapshot {
@@ -42,6 +44,7 @@ function getImageEntry(src: string) {
 
   image.onload = () => publish("loaded");
   image.onerror = () => publish("error");
+  applyImageCrossOrigin(image, src);
   image.src = src;
   imageCache.set(src, entry);
 

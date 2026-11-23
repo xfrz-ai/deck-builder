@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { EditorShell } from "@/components/editor/editor-shell";
 import { buttonVariants } from "@/components/ui/button";
 import { notifyEditor } from "@/lib/editor/notifications";
-import { loadDeck, saveDeck, type DeckRecord } from "@/lib/presentation/library";
+import { DECKS_IN_CLOUD, DeckConflictError, loadDeck, saveDeck, type DeckRecord } from "@/lib/presentation/deck-library";
 import { EditorStoreProvider, useEditorStore } from "@/store/editor-store";
 
 const AUTOSAVE_DELAY_MS = 500;
@@ -19,8 +19,8 @@ type LoadState =
   | { status: "missing" }
   | { status: "error"; message: string };
 
-// Opens a presentation from the browser library. Without an id there is
-// nothing to open, so it returns to the home page.
+// Opens a presentation from the Library (cloud or this browser). Without an id
+// there is nothing to open, so it returns to the home page.
 export function LibraryDeckEntry({ deckId }: { deckId: string | null }) {
   const router = useRouter();
   const [state, setState] = useState<LoadState>({ status: "loading" });
@@ -78,7 +78,9 @@ export function LibraryDeckEntry({ deckId }: { deckId: string | null }) {
         </h1>
         <p className="mt-2 text-[13px] leading-5 text-muted-foreground">
           {state.status === "missing"
-            ? "It may have been deleted, or it was saved in a different browser."
+            ? DECKS_IN_CLOUD
+              ? "It may have been deleted, or it hasn't been shared with you."
+              : "It may have been deleted, or it was saved in a different browser."
             : state.message}
         </p>
         <Link className={buttonVariants({ className: "mt-6" })} href="/">
@@ -92,7 +94,9 @@ export function LibraryDeckEntry({ deckId }: { deckId: string | null }) {
 
 // Writes the open presentation back to the library shortly after each change,
 // and right away when the editor closes. Moving between slides is remembered
-// without counting as an edit.
+// without counting as an edit. Leaving with a save still running asks first.
+// After a save conflict (a colleague saved in between) saving stops, so their
+// version isn't overwritten.
 function LibraryAutosave({ deckId, initialActiveSlideId }: { deckId: string; initialActiveSlideId: string }) {
   const presentation = useEditorStore((state) => state.presentation);
   const activeSlideId = useEditorStore((state) => state.activeSlideId);
@@ -101,6 +105,8 @@ function LibraryAutosave({ deckId, initialActiveSlideId }: { deckId: string; ini
   const pendingEdit = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const flushRef = useRef<() => void>(() => undefined);
+  const inFlight = useRef(0);
+  const stopped = useRef(false);
 
   // Reopen on the slide that was active last time.
   useEffect(() => {
@@ -116,12 +122,29 @@ function LibraryAutosave({ deckId, initialActiveSlideId }: { deckId: string; ini
       if (timer.current) clearTimeout(timer.current);
       timer.current = null;
       flushRef.current = () => undefined;
+      if (stopped.current) return;
       const touch = pendingEdit.current;
       pendingEdit.current = false;
       saved.current = { presentation, activeSlideId };
-      saveDeck(deckId, presentation, activeSlideId, { touch }).catch(() => {
-        notifyEditor("Changes could not be saved to this browser.");
-      });
+      inFlight.current += 1;
+      saveDeck(deckId, presentation, activeSlideId, { touch })
+        .catch((error: unknown) => {
+          if (error instanceof DeckConflictError) {
+            stopped.current = true;
+            notifyEditor(error.message);
+          } else {
+            // Saved again with the next change.
+            pendingEdit.current ||= touch;
+            notifyEditor(
+              DECKS_IN_CLOUD
+                ? `Changes could not be saved. ${error instanceof Error ? error.message : ""}`.trim()
+                : "Changes could not be saved to this browser.",
+            );
+          }
+        })
+        .finally(() => {
+          inFlight.current -= 1;
+        });
     };
 
     flushRef.current = flush;
@@ -131,9 +154,17 @@ function LibraryAutosave({ deckId, initialActiveSlideId }: { deckId: string; ini
 
   useEffect(() => {
     const flush = () => flushRef.current();
+    // Cloud saves are network requests a closing tab can cut off.
+    const warnIfSaving = (event: BeforeUnloadEvent) => {
+      if (!DECKS_IN_CLOUD) return;
+      flush();
+      if (inFlight.current > 0) event.preventDefault();
+    };
     window.addEventListener("pagehide", flush);
+    window.addEventListener("beforeunload", warnIfSaving);
     return () => {
       window.removeEventListener("pagehide", flush);
+      window.removeEventListener("beforeunload", warnIfSaving);
       flush();
     };
   }, []);

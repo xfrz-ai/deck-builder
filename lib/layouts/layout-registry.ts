@@ -12,6 +12,8 @@ import { WKND_COVER_ARCHES_LAYOUT } from "@/lib/layouts/wknd-cover-arches-layout
 import { WKND_COVER_BRAND_LAYOUT } from "@/lib/layouts/wknd-cover-brand-layout";
 import { WKND_COVER_D_LAYOUT } from "@/lib/layouts/wknd-cover-d-layout";
 import { WKND_COVER_STAR_LAYOUT } from "@/lib/layouts/wknd-cover-star-layout";
+import { WKND_ICON_FEATURES_LAYOUT } from "@/lib/layouts/wknd-icon-features-layout";
+import { WKND_ICON_LIST_LAYOUT } from "@/lib/layouts/wknd-icon-list-layout";
 import { WKND_FULL_TEXT_LAYOUT } from "@/lib/layouts/wknd-full-text-layout";
 import { WKND_FULL_TEXT_PARAGRAPHS_LAYOUT } from "@/lib/layouts/wknd-full-text-paragraphs-layout";
 import { WKND_FULL_TEXT_STATEMENT_LAYOUT } from "@/lib/layouts/wknd-full-text-statement-layout";
@@ -34,6 +36,7 @@ import { WKND_QUESTIONS_LAYOUT } from "@/lib/layouts/wknd-questions-layout";
 import { WKND_TEAM_ORG_LAYOUT } from "@/lib/layouts/wknd-team-org-layout";
 import { WKND_TEAM_SQUADS_LAYOUT } from "@/lib/layouts/wknd-team-squads-layout";
 import { WKND_SOW_MODULES_LAYOUT } from "@/lib/layouts/wknd-sow-modules-layout";
+import { WKND_SOW_OVERVIEW_LAYOUT } from "@/lib/layouts/wknd-sow-overview-layout";
 import { WKND_TABLE_BUG_TRIAGE_LAYOUT } from "@/lib/layouts/wknd-table-bug-triage-layout";
 import { WKND_TABLE_PACKAGES_LAYOUT } from "@/lib/layouts/wknd-table-packages-layout";
 import { WKND_TABLE_SCOPE_LAYOUT } from "@/lib/layouts/wknd-table-scope-layout";
@@ -60,9 +63,12 @@ export const SLIDE_LAYOUTS: readonly SlideLayoutDefinition[] = [
   WKND_TIMELINE_STEPS_LAYOUT,
   WKND_TIMELINE_ROADMAP_LAYOUT,
   WKND_SOW_MODULES_LAYOUT,
+  WKND_SOW_OVERVIEW_LAYOUT,
   WKND_TABLE_PACKAGES_LAYOUT,
   WKND_TABLE_SCOPE_LAYOUT,
   WKND_TABLE_BUG_TRIAGE_LAYOUT,
+  WKND_ICON_FEATURES_LAYOUT,
+  WKND_ICON_LIST_LAYOUT,
   WKND_IMAGE_MOODS_LAYOUT,
   WKND_IMAGE_MATERIALS_LAYOUT,
   WKND_IMAGE_CHAPTER_LAYOUT,

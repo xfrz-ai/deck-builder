@@ -6,6 +6,7 @@ export interface SlideLayoutDefinition {
     | "agenda"
     | "bento"
     | "cover"
+    | "icon"
     | "image"
     | "iphone"
     | "macbook"

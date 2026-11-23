@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 
+import { AuthGate } from "@/components/auth/auth-gate";
+
 import "./globals.css";
 
 const inter = Inter({
@@ -26,7 +28,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${inter.variable} ${plusJakartaSans.variable} h-full antialiased`}
     >
-      <body className="min-h-full">{children}</body>
+      <body className="min-h-full">
+        <AuthGate>{children}</AuthGate>
+      </body>
     </html>
   );
 }

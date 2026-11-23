@@ -32,6 +32,7 @@ const LAYOUT_FILTERS = [
   { id: "timeline", label: "Timeline" },
   { id: "sow", label: "SOW" },
   { id: "table", label: "Table" },
+  { id: "icon", label: "Text + Icon" },
   { id: "image", label: "Image + Text" },
   { id: "bento", label: "Bento" },
   { id: "text", label: "Full Text" },

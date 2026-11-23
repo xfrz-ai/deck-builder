@@ -2,6 +2,8 @@
 
 ## Menjalankan
 
+> Bila `.env.local` berisi pengaturan Supabase, app meminta login dan memakai deck cloud. Untuk deck agent lokal dan test e2e, jalankan editor dalam mode browser: `NEXT_PUBLIC_DECK_STORAGE=browser npm run dev` (dan `NEXT_PUBLIC_DECK_STORAGE=browser npm run build` sebelum `test:deck-agent:e2e`). Lihat [cloud-setup.md](cloud-setup.md).
+
 Dari direktori proyek, jalankan di terminal terpisah:
 
 ```sh
