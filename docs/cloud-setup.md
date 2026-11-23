@@ -47,7 +47,10 @@ NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key>
 ```
 
-Nilai ini publik (ikut ter-bundle ke browser). Keamanan data ada di RLS, bukan di kerahasiaan key. Karena di-inline saat build, `npm run deploy` harus dijalankan dari mesin yang punya `.env.local`.
+Nilai ini publik (ikut ter-bundle ke browser). Keamanan data ada di RLS, bukan di kerahasiaan key. Nilainya di-inline saat build, jadi harus tersedia di tempat build berjalan:
+
+- **Deploy otomatis dari GitHub (Cloudflare Workers Builds):** `.env.local` tidak ikut ter-push. Isi kedua variabel di **Workers & Pages → deck-builder → Settings → Build → Variables and secrets**, lalu jalankan ulang build (atau push commit baru). Tanpa itu, app online berjalan dalam mode browser tanpa login.
+- **`npm run deploy` dari laptop:** memakai `.env.local` di mesin itu.
 
 Tanpa kedua variabel itu, atau dengan `NEXT_PUBLIC_DECK_STORAGE=browser`, app kembali ke mode lama: tanpa login, deck di IndexedDB. Mode ini dipakai untuk development deck agent lokal dan test e2e:
 
