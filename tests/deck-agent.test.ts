@@ -12,6 +12,8 @@ import { DeckService } from "../lib/deck-service/deck-service";
 import { DeckError } from "../lib/deck-service/deck-document";
 import { createDeckHttpServer } from "../lib/deck-service/http-server";
 import { getDeckSpecCatalog } from "../lib/deck-spec/layout-catalog";
+import { isLayoutShape, SHAPES_BY_LAYOUT } from "../lib/deck-spec/layout-shapes";
+import { buildDeckFromSpec } from "../lib/deck-spec/build-deck";
 import { createEditorStore } from "../store/editor-store";
 
 const spec = { version: 1 as const, title: "Agent test", slides: [
@@ -27,10 +29,10 @@ async function fixture(t: { after: (fn: () => unknown) => void }) {
   return { directory, repository, service: new DeckService(repository) };
 }
 
-test("31 supported catalog layouts build and survive repository restart", async t => {
+test("34 supported catalog layouts build and survive repository restart", async t => {
   const { service, directory } = await fixture(t);
   const catalog = getDeckSpecCatalog();
-  assert.equal(catalog.layouts.length, 31);
+  assert.equal(catalog.layouts.length, 34);
   for (const layout of catalog.layouts) {
     const deck = await service.create({ requestId: layout.id, spec: { slides: [{ layout: layout.id, content: layout.example }] } });
     assert.equal(deck.validation, "estimated");
@@ -42,6 +44,42 @@ test("31 supported catalog layouts build and survive repository restart", async 
     const saved = await service.save({ deckId: deck.presentation.id, expectedRevision: 1, requestId: "normalized-save", presentation: editor.getState().presentation });
     assert.ok(Object.values(saved.sources).every(source => !source.stale), `Loading ${layout.id} must not invalidate its source.`);
   }
+});
+
+test("layout variants: shapes for every layout, lists that spread out, and allowed item counts", () => {
+  const catalog = getDeckSpecCatalog();
+  const ids = new Set(catalog.layouts.map(layout => layout.id));
+  for (const layout of catalog.layouts) {
+    assert.ok(layout.shapes.length > 0, `${layout.id} needs at least one shape.`);
+    for (const shape of layout.shapes) assert.ok(isLayoutShape(shape), `${layout.id} has unknown shape ${shape}.`);
+  }
+  for (const id of Object.keys(SHAPES_BY_LAYOUT)) assert.ok(ids.has(id), `Shapes are listed for ${id}, which is not in the catalog.`);
+  assert.deepEqual(catalog.layouts.filter(layout => layout.shapes.includes("text-image") && layout.shapes.includes("two-column")).map(layout => layout.id).sort(),
+    ["wknd-image-field-notes", "wknd-image-photo-text", "wknd-image-text-photo", "wknd-image-two-studies"]);
+
+  const build = (slide: unknown) => buildDeckFromSpec({ version: 1, title: "Variants", slides: [slide] });
+  const texts = (result: ReturnType<typeof build>) => result.presentation!.slides[0].elements.filter(element => element.type === "text");
+  const three = texts(build({ layout: "wknd-full-text", content: { title: "Three", columns: [{ body: "One" }, { body: "Two" }, { body: "Three" }] } }));
+  const two = build({ layout: "wknd-full-text", content: { title: "Two", columns: [{ body: "Left" }, { body: "Right" }] } });
+  assert.deepEqual(two.errors, []);
+  const [left, right] = ["Left", "Right"].map(text => texts(two).find(element => element.text === text)!);
+  const lastOfThree = three.find(element => element.text === "Three" && element.y > 400)!;
+  // Two columns fill the width of three, with the same gutter.
+  assert.equal(left.x, three.find(element => element.text === "One")!.x);
+  assert.equal(left.width, right.width);
+  assert.ok(left.width > lastOfThree.width * 1.4);
+  assert.equal(right.x + right.width, lastOfThree.x + lastOfThree.width);
+  assert.equal(right.x - (left.x + left.width), 24);
+
+  assert.deepEqual(build({ layout: "wknd-full-text-statement", content: { title: "Bold." } }).errors, []);
+  assert.match(build({ layout: "wknd-full-text-statement", content: { title: "Bold.", columns: [{ body: "One" }] } }).errors[0].message, /0, 2 or 3 items; got 1/);
+  const stats = build({ layout: "wknd-stats", content: { title: "Results", stats: [{ value: "38%", label: "Repeat visits" }, { value: "2.4×", label: "Faster checkout" }] } });
+  assert.deepEqual(stats.errors, []);
+  assert.equal(texts(stats).filter(element => element.fontSize === 120).length, 2);
+  assert.match(build({ layout: "wknd-stats", content: { title: "Results", stats: [{ value: "1", label: "One" }] } }).errors[0].message, /2–4 items/);
+  const split = build({ layout: "wknd-image-photo-text", content: { title: "Photo left", paragraphs: [{ text: "One paragraph." }], photo: "https://example.com/photo.jpg" } });
+  assert.deepEqual(split.errors, []);
+  assert.deepEqual(split.warnings, []);
 });
 
 test("stable identity, one-slide updates, insert position, and persistent idempotent retries", async t => {
@@ -187,7 +225,7 @@ test("authenticated loopback API, exact backup, ten real MCP stdio tools and the
     return result.structuredContent as Record<string, unknown>;
   }
   const catalog = await call("list_layouts", {});
-  assert.equal((catalog.layouts as unknown[]).length, 31);
+  assert.equal((catalog.layouts as unknown[]).length, 34);
   const styles = await call("get_brand_styles", {});
   assert.equal(styles.fontFamily, "Plus Jakarta Sans");
   const created = await call("create_deck", { requestId: "stdio-create", spec });

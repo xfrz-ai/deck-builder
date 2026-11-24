@@ -3,9 +3,10 @@
 import {
   AlertTriangle,
   ArrowUp,
-  Check,
+  ChevronDown,
   LoaderCircle,
   Presentation as PresentationIcon,
+  RefreshCw,
   RotateCcw,
   Sparkles,
   Square,
@@ -13,14 +14,17 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
+import { FormattedText, toTranscript, ToolLines, useDeckAgentChat } from "@/components/ai/agent-chat";
 import { Button } from "@/components/ui/button";
+import { SwitchIndicator } from "@/components/ui/switch";
 import {
-  DeckAgentError,
+  getAgentState,
   getDeckAgentStatus,
-  readDeckAgentEvents,
-  sendDeckAgentMessage,
-  stopDeckAgentTurn,
-  type DeckAgentEvent,
+  isAgentReady,
+  setActiveAgent,
+  type AgentId,
+  type AgentInfo,
+  type AgentState,
   type DeckAgentStatus,
 } from "@/lib/ai/deck-agent-client";
 import { rememberConnection } from "@/lib/local-deck/client";
@@ -35,223 +39,95 @@ const EXAMPLES = [
   "Company profile WKND untuk calon klien baru",
 ];
 
-const TOOL_LABELS: Record<string, [running: string, done: string]> = {
-  get_deck_playbook: ["Reading the WKND playbook", "Read the WKND playbook"],
-  list_layouts: ["Checking layouts", "Checked layouts"],
-  get_brand_styles: ["Checking brand styles", "Checked brand styles"],
-  create_deck: ["Creating the deck", "Created the deck"],
-  add_slide: ["Adding slides", "Added slides"],
-  update_slide: ["Updating slides", "Updated slides"],
-  finish_deck: ["Finishing the deck", "Finished the deck"],
-  get_deck: ["Reading the deck", "Read the deck"],
-  preview_deck: ["Checking the preview", "Checked the preview"],
-  start_deck_run: ["Starting an edit run", "Started an edit run"],
-};
-
-function readSavedChat() {
-  try {
-    return sessionStorage.getItem(CHAT_KEY);
-  } catch {
-    return null;
-  }
-}
-
-function saveChat(chatId: string | null) {
-  try {
-    if (chatId) sessionStorage.setItem(CHAT_KEY, chatId);
-    else sessionStorage.removeItem(CHAT_KEY);
-  } catch {
-    // The chat still works in this tab; it just won't survive a reload.
-  }
-}
-
-const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-function useDeckAgentChat() {
-  const [chatId, setChatId] = useState<string | null>(null);
-  const [events, setEvents] = useState<DeckAgentEvent[]>([]);
-  const [busy, setBusy] = useState(false);
-  const [sending, setSending] = useState(false);
-  const [error, setError] = useState("");
-  const lastSeq = useRef(0);
-  const busyRef = useRef(false);
-  const streamRef = useRef<AbortController | null>(null);
-
-  const reset = useCallback((message = "") => {
-    streamRef.current?.abort();
-    streamRef.current = null;
-    lastSeq.current = 0;
-    busyRef.current = false;
-    saveChat(null);
-    setChatId(null);
-    setEvents([]);
-    setBusy(false);
-    setError(message);
-  }, []);
-
-  const addEvent = useCallback((event: DeckAgentEvent) => {
-    if (event.seq <= lastSeq.current) return;
-    lastSeq.current = event.seq;
-    if (event.type === "user") busyRef.current = true;
-    if (event.type === "turn-end") busyRef.current = false;
-    setBusy(busyRef.current);
-    setEvents((current) => [...current, event]);
-  }, []);
-
-  // Follows the chat until the current turn ends, reconnecting if the stream
-  // drops while the AI is still working.
-  const follow = useCallback(async (id: string) => {
-    streamRef.current?.abort();
-    const controller = new AbortController();
-    streamRef.current = controller;
-    let failures = 0;
-    while (!controller.signal.aborted) {
-      try {
-        await readDeckAgentEvents(id, lastSeq.current, addEvent, controller.signal);
-        failures = 0;
-        if (!busyRef.current) return;
-      } catch (caught) {
-        if (controller.signal.aborted) return;
-        if (caught instanceof DeckAgentError && caught.code === "CHAT_NOT_FOUND") {
-          reset(caught.message);
-          return;
-        }
-        if (++failures > 4) {
-          setBusy(false);
-          setError(caught instanceof Error ? caught.message : "Lost the connection to the AI bridge.");
-          return;
-        }
-      }
-      await wait(1000 * Math.max(1, failures));
-    }
-  }, [addEvent, reset]);
-
-  useEffect(() => {
-    const saved = readSavedChat();
-    if (saved) {
-      // Restoring a chat kept by the bridge, e.g. after visiting the editor.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setChatId(saved);
-      void follow(saved);
-    }
-    return () => streamRef.current?.abort();
-  }, [follow]);
-
-  const send = useCallback(async (text: string) => {
-    const message = text.trim();
-    if (!message || busyRef.current) return false;
-    setSending(true);
-    setError("");
-    try {
-      const id = await sendDeckAgentMessage(chatId, message);
-      if (id !== chatId) {
-        saveChat(id);
-        setChatId(id);
-      }
-      busyRef.current = true;
-      setBusy(true);
-      void follow(id);
-      return true;
-    } catch (caught) {
-      if (caught instanceof DeckAgentError && caught.code === "CHAT_NOT_FOUND") reset(caught.message);
-      else setError(caught instanceof Error ? caught.message : "The message could not be sent.");
-      return false;
-    } finally {
-      setSending(false);
-    }
-  }, [chatId, follow, reset]);
-
-  const stop = useCallback(async () => {
-    if (!chatId) return;
-    try {
-      await stopDeckAgentTurn(chatId);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "The AI could not be stopped.");
-    }
-  }, [chatId]);
-
-  return { chatId, events, busy, sending, error, send, stop, reset };
-}
-
-type ToolLine = { name: string; count: number; running: number; failed: number };
-type TranscriptItem =
-  | { kind: "user" | "assistant" | "error" | "notice"; key: string; text: string }
-  | { kind: "tools"; key: string; lines: ToolLine[] }
-  | { kind: "deck"; key: string; deckId: string; title: string };
-
-// Turns the event log into chat bubbles, with consecutive tool calls folded
-// into one activity group.
-function toTranscript(events: readonly DeckAgentEvent[]): TranscriptItem[] {
-  const items: TranscriptItem[] = [];
-  const toolNames = new Map<string, string>();
-  const decks = new Set<string>();
-  const currentTools = () => {
-    const last = items.at(-1);
-    return last?.kind === "tools" ? last : null;
-  };
-  for (const event of events) {
-    const key = String(event.seq);
-    if (event.type === "user" || event.type === "assistant") items.push({ kind: event.type, key, text: event.text });
-    else if (event.type === "error") items.push({ kind: "error", key, text: event.message });
-    else if (event.type === "stopped") items.push({ kind: "notice", key, text: "Stopped." });
-    else if (event.type === "deck") {
-      if (decks.has(event.deckId)) continue;
-      decks.add(event.deckId);
-      items.push({ kind: "deck", key, deckId: event.deckId, title: event.title });
-    } else if (event.type === "tool") {
-      toolNames.set(event.id, event.name);
-      let group = currentTools();
-      if (!group) {
-        group = { kind: "tools", key, lines: [] };
-        items.push(group);
-      }
-      let line = group.lines.find((item) => item.name === event.name);
-      if (!line) {
-        line = { name: event.name, count: 0, running: 0, failed: 0 };
-        group.lines.push(line);
-      }
-      line.count += 1;
-      line.running += 1;
-    } else if (event.type === "tool-result") {
-      const name = toolNames.get(event.id) ?? event.name;
-      for (let index = items.length - 1; index >= 0; index--) {
-        const item = items[index];
-        const line = item.kind === "tools" ? item.lines.find((entry) => entry.name === name && entry.running > 0) : undefined;
-        if (line) {
-          line.running -= 1;
-          if (!event.ok) line.failed += 1;
-          break;
-        }
-      }
-    } else if (event.type === "turn-end") {
-      // A stopped or failed turn leaves calls without a result.
-      for (const item of items) if (item.kind === "tools") for (const line of item.lines) line.running = 0;
-    }
-  }
-  return items;
-}
-
-// Links from deck tools carry the service token in their fragment.
-const withoutTokens = (text: string) => text.replace(/#service=[^\s)\]>]*/g, "");
-
-function FormattedText({ text }: { text: string }) {
-  const parts = withoutTokens(text).split(/(\*\*[^*\n]+\*\*|`[^`\n]+`)/g);
-  return (
-    <>
-      {parts.map((part, index) => {
-        if (part.startsWith("**") && part.endsWith("**") && part.length > 4) return <strong key={index} className="font-semibold">{part.slice(2, -2)}</strong>;
-        if (part.startsWith("`") && part.endsWith("`") && part.length > 2) return <code key={index} className="rounded bg-surface-01/70 px-1 text-[12px]">{part.slice(1, -1)}</code>;
-        return part;
-      })}
-    </>
-  );
-}
-
 function SetupNotice({ children }: { children: ReactNode }) {
   return (
     <div className="flex gap-2 rounded-xl bg-[#E04E2B]/10 p-3 text-[12px] leading-5 text-[#B3361A]" role="alert">
       <AlertTriangle aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" strokeWidth={2} />
       <div className="min-w-0">{children}</div>
+    </div>
+  );
+}
+
+function agentStatusText(agent: AgentInfo) {
+  if (!agent.installed) return "Not installed";
+  const version = agent.version ? `v${agent.version}` : "Installed";
+  if (agent.loggedIn === false) return `${version} · Not logged in`;
+  return agent.loggedIn ? `${version} · Logged in` : version;
+}
+
+// The user's own AI agents: what is installed and logged in, and which one
+// the chat (and the editor's AI features) use. One agent is on at a time.
+function AgentsCard({
+  state,
+  disabled,
+  pending,
+  refreshing,
+  error,
+  onToggle,
+  onRefresh,
+}: {
+  state: AgentState;
+  disabled: boolean;
+  pending: AgentId | "off" | null;
+  refreshing: boolean;
+  error: string;
+  onToggle: (agent: AgentId, on: boolean) => void;
+  onRefresh: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-1 rounded-2xl border border-stroke-02 p-3">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[13px] font-semibold text-primary">AI agent</p>
+        <button
+          className="inline-flex cursor-pointer items-center gap-1 text-[12px] text-muted-foreground underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+          disabled={refreshing}
+          onClick={onRefresh}
+          type="button"
+        >
+          <RefreshCw aria-hidden="true" className={cn("size-3", refreshing && "animate-spin")} strokeWidth={2} />
+          Check again
+        </button>
+      </div>
+      <p className="text-[12px] leading-4 text-muted-foreground">
+        Runs on your own login on this computer. One agent is on at a time.
+      </p>
+      <ul className="mt-1 flex flex-col">
+        {state.agents.map((agent) => {
+          const on = state.active === agent.id;
+          const ready = isAgentReady(agent);
+          return (
+            <li key={agent.id} className="border-t border-stroke-01 first:border-t-0">
+              <button
+                aria-checked={on}
+                className="flex w-full cursor-pointer items-center gap-3 py-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/35 disabled:cursor-not-allowed"
+                disabled={disabled || pending !== null || (!on && !ready)}
+                onClick={() => onToggle(agent.id, !on)}
+                role="switch"
+                type="button"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className={cn("block text-[13px] font-medium", ready ? "text-primary" : "text-muted-foreground")}>{agent.name}</span>
+                  <span className="block text-[12px] text-muted-foreground">
+                    {agentStatusText(agent)}
+                    {on ? " · Active" : ""}
+                  </span>
+                </span>
+                {pending === agent.id || (pending === "off" && on) ? (
+                  <LoaderCircle aria-hidden="true" className="size-4 animate-spin text-muted-foreground" />
+                ) : null}
+                <span className={cn(!on && !ready && "opacity-40")}>
+                  <SwitchIndicator checked={on} />
+                </span>
+              </button>
+              {agent.hint ? <p className="pb-2 text-[12px] leading-4 text-[#B3361A]">{agent.hint}</p> : null}
+            </li>
+          );
+        })}
+      </ul>
+      {state.active === null ? (
+        <p className="text-[12px] leading-4 text-muted-foreground">AI is off. Turn on an agent to chat.</p>
+      ) : null}
+      {error ? <p className="text-[12px] leading-4 text-[#B3361A]" role="alert">{error}</p> : null}
     </div>
   );
 }
@@ -267,10 +143,17 @@ export function DeckAgentPanel({
   serviceConnected: boolean;
   onOpenDeck: (deckId: string) => void;
 }) {
-  const chat = useDeckAgentChat();
+  const chat = useDeckAgentChat(CHAT_KEY);
   const [input, setInput] = useState("");
   const [status, setStatus] = useState<DeckAgentStatus | null>(null);
   const [bridgeDown, setBridgeDown] = useState(false);
+  const [agents, setAgents] = useState<AgentState | null>(null);
+  const [agentsOpen, setAgentsOpen] = useState(false);
+  const [agentPending, setAgentPending] = useState<AgentId | "off" | null>(null);
+  const [agentsRefreshing, setAgentsRefreshing] = useState(false);
+  const [agentError, setAgentError] = useState("");
+  // The agent the current chat runs on, so switching starts a new chat.
+  const lastAgent = useRef<AgentId | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const transcript = useMemo(() => toTranscript(chat.events), [chat.events]);
@@ -297,6 +180,51 @@ export function DeckAgentPanel({
     return () => controller.abort();
   }, [checkStatus, open, chat.busy]);
 
+  const applyAgents = useCallback((next: AgentState) => {
+    setAgents(next);
+    if (next.active && !lastAgent.current) lastAgent.current = next.active;
+  }, []);
+
+  // Uses the bridge's last check (it re-checks the CLIs every 30 seconds).
+  useEffect(() => {
+    if (!open) return;
+    const controller = new AbortController();
+    // A bridge that isn't running is covered by the bridge notice.
+    getAgentState(false, controller.signal).then(applyAgents, () => undefined);
+    return () => controller.abort();
+  }, [applyAgents, open, bridgeDown]);
+
+  const refreshAgents = async () => {
+    setAgentsRefreshing(true);
+    try {
+      applyAgents(await getAgentState(true));
+    } catch {
+      // As above.
+    } finally {
+      setAgentsRefreshing(false);
+    }
+  };
+
+  const activeAgent = agents?.agents.find((agent) => agent.id === agents.active);
+  const agentReady = isAgentReady(activeAgent);
+
+  const toggleAgent = async (agent: AgentId, on: boolean) => {
+    setAgentPending(on ? agent : "off");
+    setAgentError("");
+    try {
+      const next = await setActiveAgent(on ? agent : null);
+      setAgents(next);
+      // A chat stays with its agent: another agent starts a new chat.
+      if (next.active && lastAgent.current && next.active !== lastAgent.current && chat.chatId) chat.reset();
+      if (next.active) lastAgent.current = next.active;
+    } catch (caught) {
+      setAgentError(caught instanceof Error ? caught.message : "The AI agent could not be changed.");
+      void refreshAgents();
+    } finally {
+      setAgentPending(null);
+    }
+  };
+
   useEffect(() => {
     if (!open) return;
     inputRef.current?.focus();
@@ -315,7 +243,10 @@ export function DeckAgentPanel({
     if (await chat.send(text)) setInput("");
   };
 
-  const canSend = !chat.busy && !chat.sending && !bridgeDown;
+  // Until the agent list loads (or with an older bridge without it) the bridge
+  // itself refuses a chat when no agent is on.
+  const canSend = !chat.busy && !chat.sending && !bridgeDown && (agents === null || agentReady);
+  const showAgents = Boolean(agents) && !bridgeDown && (agentsOpen || !agentReady);
 
   return (
     <section
@@ -331,9 +262,28 @@ export function DeckAgentPanel({
         </div>
         <div className="min-w-0 flex-1">
           <h2 className="text-[14px] font-semibold tracking-[-0.02em] text-primary">Create with AI</h2>
-          <p className="truncate text-[12px] text-muted-foreground">
-            {chat.busy ? "Working…" : "Brief, storyline, then a live build"}
-          </p>
+          {agents ? (
+            <button
+              aria-expanded={showAgents}
+              className="flex max-w-full cursor-pointer items-center gap-1.5 text-[12px] text-muted-foreground hover:text-primary"
+              onClick={() => setAgentsOpen((value) => !value)}
+              title="Choose the AI agent"
+              type="button"
+            >
+              <span
+                aria-hidden="true"
+                className={cn("size-2 shrink-0 rounded-full", agentReady ? "bg-[#2F9E5B]" : activeAgent ? "bg-[#E04E2B]" : "bg-stroke-02")}
+              />
+              <span className="truncate">
+                {activeAgent ? `${activeAgent.name}${agentReady ? "" : " · needs setup"}` : "AI off"}
+              </span>
+              <ChevronDown aria-hidden="true" className={cn("size-3 shrink-0 transition-transform", showAgents && "rotate-180")} strokeWidth={2} />
+            </button>
+          ) : (
+            <p className="truncate text-[12px] text-muted-foreground">
+              {chat.busy ? "Working…" : "Brief, storyline, then a live build"}
+            </p>
+          )}
         </div>
         {chat.chatId ? (
           <Button
@@ -369,6 +319,18 @@ export function DeckAgentPanel({
           </SetupNotice>
         ) : null}
 
+        {showAgents && agents ? (
+          <AgentsCard
+            disabled={chat.busy || chat.sending}
+            error={agentError}
+            onRefresh={() => void refreshAgents()}
+            onToggle={(agent, on) => void toggleAgent(agent, on)}
+            pending={agentPending}
+            refreshing={agentsRefreshing}
+            state={agents}
+          />
+        ) : null}
+
         {transcript.length === 0 ? (
           <div className="flex flex-col gap-2 p-1">
             <p className="text-[15px] font-medium tracking-[-0.02em] text-primary">What should we build?</p>
@@ -393,27 +355,7 @@ export function DeckAgentPanel({
         ) : null}
 
         {transcript.map((item) => {
-          if (item.kind === "tools") {
-            return (
-              <ul key={item.key} className="flex flex-col gap-1 self-start px-1">
-                {item.lines.map((line) => {
-                  const [running, done] = TOOL_LABELS[line.name] ?? [line.name, line.name];
-                  return (
-                    <li key={line.name} className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
-                      {line.running > 0 ? (
-                        <LoaderCircle aria-hidden="true" className="size-3.5 animate-spin" />
-                      ) : (
-                        <Check aria-hidden="true" className="size-3.5" strokeWidth={2} />
-                      )}
-                      <span>{line.running > 0 ? `${running}…` : done}</span>
-                      {line.count > 1 ? <span className="tabular-nums">· {line.count}</span> : null}
-                      {line.failed > 0 ? <span className="text-[#B3361A]">· {line.failed} failed</span> : null}
-                    </li>
-                  );
-                })}
-              </ul>
-            );
-          }
+          if (item.kind === "tools") return <ToolLines key={item.key} lines={item.lines} />;
           if (item.kind === "deck") {
             return (
               <div key={item.key} className="flex items-center gap-3 self-stretch rounded-2xl border border-stroke-02 p-3">
@@ -447,7 +389,7 @@ export function DeckAgentPanel({
         {chat.busy ? (
           <div className="flex items-center gap-2 self-start px-1 text-[12px] text-muted-foreground">
             <LoaderCircle aria-hidden="true" className="size-3.5 animate-spin" />
-            Claude is working…
+            {activeAgent?.name ?? "The AI"} is working…
             <button className="inline-flex cursor-pointer items-center gap-1 underline underline-offset-2" type="button" onClick={() => void chat.stop()}>
               <Square aria-hidden="true" className="size-3" strokeWidth={2.2} />
               Stop
@@ -472,7 +414,7 @@ export function DeckAgentPanel({
           aria-label="Message"
           value={input}
           rows={2}
-          placeholder={chat.busy ? "Wait for the AI to finish…" : transcript.length ? "Reply…" : "Describe your deck…"}
+          placeholder={chat.busy ? "Wait for the AI to finish…" : agents && !agentReady ? "Turn on an AI agent first…" : transcript.length ? "Reply…" : "Describe your deck…"}
           onChange={(event) => setInput(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {

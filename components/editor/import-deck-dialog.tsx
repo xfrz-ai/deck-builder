@@ -95,7 +95,7 @@ function FileButton({ accept, children, onFile }: { accept: string; children: Re
 
 function stageLabel(stage: DeckGenerationStage) {
   return stage.kind === "drafting"
-    ? "Claude is drafting the deck…"
+    ? "The AI is drafting the deck…"
     : `Fixing ${stage.problems} problem${stage.problems === 1 ? "" : "s"} (round ${stage.attempt})…`;
 }
 
@@ -208,12 +208,12 @@ export function ImportDeckDialog({ onClose, onImport, target = "current" }: {
   return (
     <GeneratorDialog
       closeLabel="Close import"
-      description={tab === "document" ? "Turn a Markdown or PowerPoint file into WKND slides with Claude." : "Build WKND slides from a deck spec (JSON)."}
+      description={tab === "document" ? "Turn a Markdown or PowerPoint file into WKND slides with your AI agent." : "Build WKND slides from a deck spec (JSON)."}
       insertDisabled={slides.length === 0 || generating}
       insertLabel={insertLabel}
       onClose={onClose}
       onInsert={handleImport}
-      previewEmptyMessage={generating ? "The preview appears when Claude is done." : parsed.kind === "invalid" ? "Fix the JSON to see a preview." : tab === "document" ? "Upload a document and generate the deck." : "Paste a deck spec to see its slides."}
+      previewEmptyMessage={generating ? "The preview appears when the AI is done." : parsed.kind === "invalid" ? "Fix the JSON to see a preview." : tab === "document" ? "Upload a document and generate the deck." : "Paste a deck spec to see its slides."}
       previewNote={slides.length ? `Slide ${index + 1} of ${slides.length}. Slides with errors are shown as built; you can still edit them after importing.` : "The layouts set every position, color and font."}
       previewSlide={slides[index] ?? null}
       title="Import deck"
@@ -250,7 +250,7 @@ export function ImportDeckDialog({ onClose, onImport, target = "current" }: {
             <p className="text-[11px] leading-snug text-muted-foreground">
               {generationMode === "restyle"
                 ? "Keeps the slides, order and wording. Only text that doesn't fit is shortened."
-                : "Lets Claude restructure the story into about 12–20 slides, keeping the facts and placeholders."}
+                : "Lets the AI restructure the story into about 12–20 slides, keeping the facts and placeholders."}
             </p>
 
             {generating ? (
@@ -271,7 +271,7 @@ export function ImportDeckDialog({ onClose, onImport, target = "current" }: {
 
             {notes.length ? (
               <div className="flex flex-col gap-1 rounded-[10px] border border-stroke-01 p-2.5">
-                <p className="text-xs font-semibold text-primary">Claude&apos;s notes</p>
+                <p className="text-xs font-semibold text-primary">AI notes</p>
                 <ul className="flex list-disc flex-col gap-1 pl-4 text-[11px] leading-snug text-muted-foreground">
                   {notes.map((note, noteIndex) => <li key={noteIndex}>{note}</li>)}
                 </ul>
@@ -280,7 +280,7 @@ export function ImportDeckDialog({ onClose, onImport, target = "current" }: {
           </div>
         ) : (
           <p className="rounded-[10px] bg-surface-03 p-2.5 text-xs leading-relaxed text-muted-foreground">
-            Importing documents uses Claude Code on your machine. Run the editor with <code>npm run dev</code> and start <code>npm run ai-bridge</code>, or paste a deck spec instead.
+            Importing documents uses your AI agent (Claude Code or Codex) on your machine. Run the editor with <code>npm run dev</code> and start <code>npm run ai-bridge</code>, or paste a deck spec instead.
           </p>
         )
       ) : (

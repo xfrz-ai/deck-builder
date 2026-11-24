@@ -18,6 +18,8 @@ function inputActive() {
   const element = globalThis.document?.activeElement;
   // Checkboxes commit immediately; focusing Follow AI must not freeze its stream.
   if (element instanceof HTMLInputElement && ["checkbox", "radio", "button", "submit", "reset"].includes(element.type)) return false;
+  // Typing to the AI chat must not hold back the changes it makes.
+  if (element instanceof HTMLElement && element.closest("[data-ai-chat]")) return false;
   return element instanceof HTMLElement && (element.matches("input,textarea,select") || element.isContentEditable);
 }
 
@@ -74,6 +76,18 @@ export function LocalDeckSession({ connection, document, children, follow = fals
   return <Context.Provider value={{ session, state, download: () => downloadDraft(store.getState().presentation) }}>{children}</Context.Provider>;
 }
 
+// The open deck's live session, or null for a deck saved only in this browser.
+export function useLocalDeckSession() {
+  return useContext(Context);
+}
+
+// The live status panel (revision, Follow AI, pause, Draft, AI activity) is
+// hidden for now. Without it the editor shows only what needs the user: unsaved
+// edits to save, a newer server version that conflicts with them, or a
+// deleted deck. Set to true to bring the panel back (tests/deck-agent-e2e.ts
+// expects it).
+const SHOW_LIVE_STATUS = false;
+
 export function LocalDeckControls() {
   const value = useContext(Context);
   const [now, setNow] = useState(() => Date.now());
@@ -85,7 +99,21 @@ export function LocalDeckControls() {
   }, [work]);
   if (!value) return null;
   const { session, state, download } = value;
-  const status = state.deleted ? "Deleted from Library" : state.connection === "connected" ? "Live connected" : state.connection === "unauthorized" ? "Reconnect with a fresh editor URL" : "Live reconnecting";
+  if (!SHOW_LIVE_STATUS) {
+    // Local decks don't autosave, so Save stays reachable while edits are open.
+    if (!state.dirty && !state.saving && !state.deleted) return null;
+    const conflict = state.canLoad && state.dirty;
+    const label = state.deleted ? "Deleted from the Library" : state.saving ? "Saving…" : conflict ? "A newer version was saved by the AI" : "Unsaved changes";
+    return (
+      <div className="flex items-center gap-2 rounded-xl border border-stroke-01 bg-surface-01 py-1.5 pl-3 pr-1.5 shadow-toolbar" role="status" aria-live="polite">
+        <span className="text-[12px] text-muted-foreground" title={state.message || undefined}>{label}</span>
+        {state.deleted ? <Button size="sm" variant="ghost" onClick={download} aria-label="Download local deck draft">Draft</Button> : null}
+        {conflict ? <Button size="sm" variant="outline" disabled={state.saving} onClick={() => session.loadServer(true)} aria-label="Load server version">Discard draft &amp; load</Button> : null}
+        {state.deleted ? null : <Button size="sm" disabled={!state.dirty || state.saving} onClick={() => { void session.save(); }} aria-label="Save local deck">{state.saving ? "Saving..." : "Save"}</Button>}
+      </div>
+    );
+  }
+  const status =state.deleted ? "Deleted from Library" : state.connection === "connected" ? "Live connected" : state.connection === "unauthorized" ? "Reconnect with a fresh editor URL" : "Live reconnecting";
   return (
     <div className="flex max-w-[min(700px,90vw)] flex-wrap items-center justify-center gap-3 rounded-xl border border-stroke-01 bg-surface-01 px-3 py-2 shadow-toolbar">
       <div className="min-w-0 text-[10px] text-muted-foreground" role="status" aria-live="polite" data-testid="local-deck-status">

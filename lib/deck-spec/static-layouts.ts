@@ -36,6 +36,12 @@ export interface StaticListField {
   keys?: readonly string[];
   // Elements of unused items (fewer than `max`) start with this prefix.
   itemPrefix: string;
+  // With fewer than `max` items, spread the used ones evenly over the width
+  // the full set covers, instead of leaving a gap. Elements as wide as their
+  // item stretch with it; narrower ones keep their width and offset.
+  spread?: boolean;
+  // The item counts allowed between `min` and `max`, when not all of them are.
+  counts?: readonly number[];
   fields: Record<string, StaticItemField>;
 }
 
@@ -105,7 +111,7 @@ export const STATIC_LAYOUT_CONTENT: readonly StaticLayoutContent[] = [
   },
   {
     layoutId: "wknd-full-text",
-    purpose: "Text-heavy slide on blue: title, intro, an optional pull quote and three numbered text columns.",
+    purpose: "Text-heavy slide on blue: title, intro, an optional pull quote and two or three numbered text columns.",
     fields: {
       eyebrow: eyebrow(),
       title: title(),
@@ -113,11 +119,12 @@ export const STATIC_LAYOUT_CONTENT: readonly StaticLayoutContent[] = [
       quote: text("quote", "Optional pull quote, up to two lines.", { removeWith: ["quote-mark"] }),
       columns: {
         type: "list",
-        description: "Exactly three numbered columns of body text.",
-        min: 3,
+        description: "Two or three numbered columns of body text. Two columns are wider: each holds about 1.5 times the limit shown.",
+        min: 2,
         max: 3,
         itemPrefix: "column-{n}-",
-        fields: { body: text("column-{n}-body", "A paragraph of 40–60 words.", { required: true }) },
+        spread: true,
+        fields: { body: text("column-{n}-body", "A paragraph of 40–60 words, or 60–90 with two columns.", { required: true }) },
       },
     },
   },
@@ -141,18 +148,20 @@ export const STATIC_LAYOUT_CONTENT: readonly StaticLayoutContent[] = [
   },
   {
     layoutId: "wknd-full-text-statement",
-    purpose: "Statement slide on yellow: a huge title on the left with three numbered text columns.",
+    purpose: "Statement slide on yellow: a huge title on the left, on its own or above two or three numbered text columns.",
     fields: {
       eyebrow: eyebrow(),
       title: title("title", "Up to three short lines; a bold statement."),
       subtitle: text("subtitle", "Short supporting text beside the title, 2–4 lines."),
       columns: {
         type: "list",
-        description: "Exactly three numbered columns of body text.",
-        min: 3,
+        description: "Leave out for a statement on its own, or give two or three numbered columns of body text. Two columns are wider: each holds about 1.5 times the limit shown.",
+        min: 0,
         max: 3,
+        counts: [0, 2, 3],
         itemPrefix: "column-{n}-",
-        fields: { body: text("column-{n}-body", "A paragraph of 40–60 words.", { required: true }) },
+        spread: true,
+        fields: { body: text("column-{n}-body", "A paragraph of 40–60 words, or 60–90 with two columns.", { required: true }) },
       },
     },
   },
@@ -182,6 +191,48 @@ export const STATIC_LAYOUT_CONTENT: readonly StaticLayoutContent[] = [
         max: 3,
         itemPrefix: "point-{n}-",
         fields: { text: text("point-{n}-text", "A statement of 5–8 words.", { required: true }) },
+      },
+    },
+  },
+  ...(["text-photo", "photo-text"] as const).map((variant): StaticLayoutContent => ({
+    layoutId: `wknd-image-${variant}`,
+    purpose: variant === "text-photo"
+      ? "Two columns: title and paragraphs on the left, one large photo on the right."
+      : "Two columns: one large photo on the left, title and paragraphs on the right.",
+    fields: {
+      eyebrow: eyebrow(),
+      title: title("title", "Up to three short lines."),
+      lead: text("lead", "Optional lead under the title, one or two lines."),
+      paragraphs: {
+        type: "list",
+        description: "One or two paragraphs.",
+        min: 1,
+        max: 2,
+        itemPrefix: "paragraph-{n}",
+        fields: { text: text("paragraph-{n}", "Two to four sentences.", { required: true }) },
+      },
+      photo: image("photo", IMAGE_NOTE),
+    },
+  })),
+  {
+    layoutId: "wknd-stats",
+    purpose: "Key numbers: two to four big figures, such as results or market facts, each with a label and a short note.",
+    fields: {
+      eyebrow: eyebrow(),
+      title: title(),
+      subtitle: text("subtitle", "Intro of one or two sentences."),
+      stats: {
+        type: "list",
+        description: "Two to four figures. Fewer figures get wider columns.",
+        min: 2,
+        max: 4,
+        itemPrefix: "stat-{n}-",
+        spread: true,
+        fields: {
+          value: text("stat-{n}-value", "The figure itself, at most about 6 characters, e.g. \"38%\", \"2.4×\" or \"Rp12M\".", { required: true }),
+          label: text("stat-{n}-label", "What the figure measures, 2–4 words.", { required: true }),
+          body: text("stat-{n}-body", "Optional note: source, period or context, one or two sentences."),
+        },
       },
     },
   },

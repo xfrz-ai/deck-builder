@@ -36,6 +36,7 @@ const LAYOUT_FILTERS = [
   { id: "image", label: "Image + Text" },
   { id: "bento", label: "Bento" },
   { id: "text", label: "Full Text" },
+  { id: "stats", label: "Stats" },
   { id: "macbook", label: "Mockup MacBook" },
   { id: "iphone", label: "Mockup iPhone" },
   { id: "thankyou", label: "Thank You" },

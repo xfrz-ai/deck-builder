@@ -20,6 +20,29 @@ export interface DeckAgentStatus {
   connection: { url: string; token: string } | null;
 }
 
+// "claude-cli" is Claude Code working through the wknd-deck CLI and skill; the
+// bridge offers it only in a checkout of the project.
+export type AgentId = "claude" | "claude-cli" | "codex";
+
+export interface AgentInfo {
+  id: AgentId;
+  name: string;
+  installed: boolean;
+  version: string | null;
+  // null when the CLI can't tell.
+  loggedIn: boolean | null;
+  // What to do before this agent can be used, if anything.
+  hint: string | null;
+}
+
+export interface AgentState {
+  // The agent new chats and the editor's AI features use; null when AI is off.
+  active: AgentId | null;
+  agents: AgentInfo[];
+}
+
+export const isAgentReady = (agent: AgentInfo | undefined) => Boolean(agent?.installed && agent.loggedIn !== false);
+
 export class DeckAgentError extends Error {
   constructor(message: string, public code?: string) {
     super(message);
@@ -55,11 +78,53 @@ export async function getDeckAgentStatus(signal?: AbortSignal): Promise<DeckAgen
   };
 }
 
-export async function sendDeckAgentMessage(chatId: string | null, message: string): Promise<string> {
+const isAgentId = (value: unknown): value is AgentId => value === "claude" || value === "claude-cli" || value === "codex";
+
+function parseAgentState(body: unknown): AgentState {
+  const value = body as { active?: unknown; agents?: unknown } | null;
+  const agents = (Array.isArray(value?.agents) ? value.agents : []).flatMap((item): AgentInfo[] => {
+    if (!isAgentId(item?.id)) return [];
+    return [{
+      id: item.id,
+      name: typeof item.name === "string" ? item.name : item.id,
+      installed: item.installed === true,
+      version: typeof item.version === "string" ? item.version : null,
+      loggedIn: typeof item.loggedIn === "boolean" ? item.loggedIn : null,
+      hint: typeof item.hint === "string" ? item.hint : null,
+    }];
+  });
+  return { active: isAgentId(value?.active) ? value.active : null, agents };
+}
+
+// `refresh` checks the CLIs again instead of using the last result.
+export async function getAgentState(refresh = false, signal?: AbortSignal): Promise<AgentState> {
+  return parseAgentState(await (await request(`/agents${refresh ? "?refresh=1" : ""}`, { signal })).json());
+}
+
+// Turns one agent on (and the other off), or AI off with null.
+export async function setActiveAgent(active: AgentId | null): Promise<AgentState> {
+  const response = await request("/agents", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ active }),
+  });
+  return parseAgentState(await response.json());
+}
+
+// Sent by the editor's AI chat with every message: the open deck and the slide
+// on screen. The bridge then runs the turn as a revision of that deck.
+export interface EditorChatContext {
+  deckId: string;
+  slideId: string;
+  slideNumber: number;
+  slideCount: number;
+}
+
+export async function sendDeckAgentMessage(chatId: string | null, message: string, editor?: EditorChatContext): Promise<string> {
   const response = await request("/chats", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chatId, message }),
+    body: JSON.stringify({ chatId, message, ...(editor ? { editor } : {}) }),
   });
   const body = await response.json();
   if (typeof body?.chatId !== "string") throw new DeckAgentError("The AI bridge did not start the chat.");

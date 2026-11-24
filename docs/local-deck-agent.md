@@ -159,7 +159,7 @@ Edit manual pada slide dapat membuat spec asal kedaluwarsa. `SLIDE_SOURCE_STALE`
 
 ## Batas MVP
 
-- 31 layout DeckSpec, maksimum 60 slide; layout lain menghasilkan `UNSUPPORTED_LAYOUT`.
+- Hanya layout dari `list_layouts` (34 saat ini), maksimum 60 slide; layout lain menghasilkan `UNSUPPORTED_LAYOUT`.
 - Semua mutasi menolak error builder; tidak menyimpan hasil parsial.
 - Pemeriksaan teks menggunakan estimasi Node (`validation: "estimated"`). Review preview manual; kecocokan font asli otomatis belum tersedia.
 - Gambar memakai `/assets/...` atau data URL raster. Gambar eksternal ditolak pada service. Link website sebagai teks tetap dapat digunakan.

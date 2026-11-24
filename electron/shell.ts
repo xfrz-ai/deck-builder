@@ -142,6 +142,8 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   app.whenReady().then(async () => {
+    // The packaged app has its icon in the bundle; `npm run desktop` shows it in the Dock too.
+    if (!app.isPackaged) app.dock?.setIcon(join(app.getAppPath(), "electron", "icon.png"));
     try {
       await boot();
     } catch (error) {

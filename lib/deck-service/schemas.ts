@@ -39,6 +39,18 @@ export const updateSchema = mutationSchema.extend({
   message: "Provide exactly one of contentPatch or slideSpec.",
 });
 export const saveSchema = mutationSchema.extend({ presentation: z.unknown() }).strict();
+export const slideTargetSchema = mutationSchema.extend({ slideId: idSchema }).strict();
+// Without afterSlideId the slide moves to the start of the deck.
+export const moveSlideSchema = mutationSchema.extend({ slideId: idSchema, afterSlideId: idSchema.optional() }).strict();
+export const deckSettingsSchema = mutationSchema.extend({
+  title: z.string().trim().min(1).max(200).optional(),
+  // "none" removes the deck theme, so every layout keeps its own colors.
+  theme: z.union([z.enum(THEME_IDS), z.literal("none")]).optional(),
+  footer: z.object({ left: z.string().max(200).optional(), note: z.string().max(200).optional() }).strict().optional(),
+}).strict().refine(value => value.title !== undefined || value.theme !== undefined || value.footer !== undefined, {
+  message: "Provide a title, theme or footer.",
+});
+export const layoutUsageSchema = z.object({ decks: z.number().int().min(1).max(50).optional() }).strict();
 export const startWorkSchema = z.object({ deckId: idSchema, expectedRevision: revisionSchema, requestId: requestIdSchema, plannedSlides: z.number().int().min(1).max(60).optional() }).strict();
 export const finishWorkSchema = mutationSchema.extend({ status: z.enum(["completed", "partial", "failed"]), summary: z.string().max(240).optional() }).strict();
 export const deleteSchema = z.object({ deckId: idSchema, expectedRevision: revisionSchema }).strict();

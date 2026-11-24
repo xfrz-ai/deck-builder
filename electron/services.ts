@@ -60,7 +60,7 @@ export async function startDeckService(options: { dataDir: string; port: number;
   }
 }
 
-export function startAiBridge(options: { script: string; dataDir: string; mcpBundle: string; playbook: string }): RunningService {
+export function startAiBridge(options: { script: string; dataDir: string; mcpBundle: string; cliBundle: string; skillDir: string; playbook: string }): RunningService {
   const child: ChildProcess = spawn(process.execPath, [options.script], {
     env: {
       ...process.env,
@@ -68,6 +68,9 @@ export function startAiBridge(options: { script: string; dataDir: string; mcpBun
       ELECTRON_RUN_AS_NODE: "1",
       DECK_DATA_DIR: options.dataDir,
       DECK_MCP_BUNDLE: options.mcpBundle,
+      // The prebuilt wknd-deck CLI and skill of the "Claude Code · CLI" agent.
+      WKND_DECK_CLI_BUNDLE: options.cliBundle,
+      WKND_DECK_SKILL_DIR: options.skillDir,
       DECK_PLAYBOOK_PATH: options.playbook,
     },
     stdio: ["ignore", "pipe", "pipe"],

@@ -122,9 +122,21 @@ export function createDeckHttpServer(service: DeckService, connection: LocalConn
         const args = await body(request);
         let result: unknown;
         switch (parts[1]) {
+          case "list_decks":
+            z.object({}).strict().parse(args);
+            result = { ok: true, ...await service.list() }; break;
+          case "check_spec": {
+            const parsed = z.object({ spec: z.unknown() }).strict().parse(args);
+            result = { ok: true, ...service.check(parsed.spec) }; break;
+          }
+          case "layout_usage": result = { ok: true, ...await service.layoutUsage(args) }; break;
+          case "move_slide": result = toolSummary(await service.moveSlide(args), connection); break;
+          case "duplicate_slide": result = toolSummary(await service.duplicateSlide(args), connection); break;
+          case "delete_slide": result = toolSummary(await service.removeSlide(args), connection); break;
+          case "update_deck": result = toolSummary(await service.updateSettings(args), connection); break;
           case "list_layouts": {
-            const parsed = z.object({ category: z.string().optional(), layoutId: z.string().optional() }).strict().parse(args);
-            result = { ok: true, ...service.layouts(parsed.category, parsed.layoutId) }; break;
+            const parsed = z.object({ category: z.string().optional(), layoutId: z.string().optional(), shape: z.string().optional() }).strict().parse(args);
+            result = { ok: true, ...service.layouts(parsed.category, parsed.layoutId, parsed.shape) }; break;
           }
           case "get_brand_styles":
             z.object({}).strict().parse(args);

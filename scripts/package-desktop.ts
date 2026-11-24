@@ -1,6 +1,7 @@
 // Packages dist-desktop/ (from build-desktop.ts) into the macOS app:
 // dist-desktop/app/WKND Deck-<version>-arm64.dmg and .zip, plus the .app in
-// dist-desktop/app/mac-arm64/.
+// dist-desktop/app/mac-arm64/. WKND_DECK_APP_OUT writes them elsewhere, e.g.
+// while a release upload is still reading dist-desktop/app/.
 //
 // The app holds only the shell and the bundle (no node_modules: everything is
 // bundled). It is ad-hoc signed, which Apple Silicon requires to run at all;
@@ -13,6 +14,7 @@ import { Arch, build, Platform } from "electron-builder";
 const root = resolve(__dirname, "..");
 const outDir = join(root, "dist-desktop");
 const stage = join(outDir, "stage");
+const appDir = process.env.WKND_DECK_APP_OUT ? resolve(process.env.WKND_DECK_APP_OUT) : join(outDir, "app");
 
 async function main() {
   const rootPackage = JSON.parse(await readFile(join(root, "package.json"), "utf8")) as {
@@ -42,12 +44,15 @@ async function main() {
       electronVersion: rootPackage.devDependencies.electron,
       // Reuse the installed Electron instead of downloading it again.
       electronDist: join(root, "node_modules/electron/dist"),
-      directories: { output: join(outDir, "app") },
+      directories: { output: appDir },
       files: ["shell.cjs", "package.json"],
       extraResources: [{ from: join(outDir, "bundle"), to: "bundle" }],
       asar: true,
       mac: {
         category: "public.app-category.productivity",
+        // 1024px PNG with the artwork already in the macOS rounded shape
+        // (824px, centred); electron-builder makes the .icns from it.
+        icon: join(root, "electron/icon.png"),
         // Ad-hoc signature: free, enough to run on Apple Silicon. Gatekeeper
         // still asks once ("Open Anyway") for downloaded copies.
         identity: "-",
@@ -58,7 +63,7 @@ async function main() {
       publish: null,
     },
   });
-  console.log("Packaged dist-desktop/app/");
+  console.log(`Packaged ${appDir}`);
 }
 
 main().catch((error) => {

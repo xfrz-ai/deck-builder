@@ -11,6 +11,7 @@ export interface SlideLayoutDefinition {
     | "iphone"
     | "macbook"
     | "sow"
+    | "stats"
     | "table"
     | "team"
     | "text"

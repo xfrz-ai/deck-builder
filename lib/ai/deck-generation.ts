@@ -53,7 +53,7 @@ export async function generateDeckSpec({
     catalog,
     today,
   }, signal);
-  if (!isSpec(draft.spec)) throw new Error("Claude did not return a deck. Try again.");
+  if (!isSpec(draft.spec)) throw new Error("The AI did not return a deck. Try again.");
 
   const spec = draft.spec;
   const notes = [...draft.notes];

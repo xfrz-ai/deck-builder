@@ -48,6 +48,8 @@ next-env.d.ts
 
 # local deck agent data and credentials
 .deck-builder/
+# agent comparison runs (scripts/compare-agents.mjs)
+.deck-compare/
 
 # desktop app build output
 /dist-desktop/

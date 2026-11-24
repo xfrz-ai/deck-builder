@@ -8,7 +8,7 @@ export const deckEventSchema = z.object({
   deckId: z.string(),
   revision: z.number().int().positive(),
   source: z.enum(["agent", "editor", "service"]),
-  operation: z.enum(["create", "add", "update", "save", "start", "finish", "delete"]).optional(),
+  operation: z.enum(["create", "add", "update", "save", "start", "finish", "delete", "move", "duplicate", "remove", "settings"]).optional(),
   requestId: z.string().optional(),
   changedSlideIds: z.array(z.string()).default([]),
   errorCode: z.string().optional(),

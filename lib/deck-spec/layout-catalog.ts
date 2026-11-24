@@ -1,6 +1,7 @@
 import { estimateTextCapacity } from "@/lib/deck-spec/build-deck";
 import { COMPONENT_LAYOUTS, type ComponentLayout } from "@/lib/deck-spec/component-layouts";
 import { DECK_SPEC_VERSION } from "@/lib/deck-spec/deck-spec";
+import { LAYOUT_SHAPES, SHAPES_BY_LAYOUT, type LayoutShape } from "@/lib/deck-spec/layout-shapes";
 import { STATIC_LAYOUT_CONTENT, TABLE_HEADER_FIELDS, type StaticField, type StaticItemField } from "@/lib/deck-spec/static-layouts";
 import { createDefaultAgenda, MAX_AGENDA_ITEMS } from "@/lib/agenda/agenda-model";
 import { SLIDE_LAYOUTS } from "@/lib/layouts/layout-registry";
@@ -20,6 +21,8 @@ interface CatalogLayout {
   id: string;
   name: string;
   category: string;
+  // What the slide looks like; see LAYOUT_SHAPES.
+  shapes: readonly LayoutShape[];
   purpose: string;
   fields: Record<string, CatalogField>;
   example: Record<string, unknown>;
@@ -60,7 +63,7 @@ function describeStaticFields(fields: Record<string, StaticField>, slide: Slide,
     const firstKey = field.keys?.[0] ?? "1";
     const items: Record<string, CatalogField> = {};
     for (const [name, itemField] of Object.entries(field.fields)) items[name] = describeItemField(itemField, slide, layoutId, firstKey).field;
-    described[key] = { type: "array", minItems: field.min, maxItems: field.max, description: field.description, items };
+    described[key] = { type: "array", minItems: field.min, maxItems: field.max, ...(field.counts ? { allowedCounts: field.counts } : {}), description: field.description, items };
     example[key] = Array.from({ length: field.max }, (_, index) => {
       const itemKey = field.keys?.[index] ?? String(index + 1);
       return Object.fromEntries(Object.entries(field.fields).flatMap(([name, itemField]) => {
@@ -243,7 +246,7 @@ export function getDeckSpecCatalog() {
     const fixed = STATIC_LAYOUT_CONTENT.find((layout) => layout.layoutId === template.id);
     const component = COMPONENT_LAYOUTS.find((layout) => layout.layoutId === template.id);
     if (!fixed && !component) return [];
-    const base = { id: template.id, name: template.name, category: template.category };
+    const base = { id: template.id, name: template.name, category: template.category, shapes: SHAPES_BY_LAYOUT[template.id] ?? [] };
     if (fixed) return [{ ...base, purpose: fixed.purpose, ...describeStaticFields(fixed.fields, template.slide, template.id) }];
     return [{ ...base, purpose: component!.purpose, ...describeComponent(component!, template.slide) }];
   });
@@ -255,13 +258,14 @@ export function getDeckSpecCatalog() {
       "Send a DeckSpec: { version: 1, title, theme?, footer?: { left?, note? }, slides: [{ layout, theme?, content }] }.",
       "Use only layout ids and content fields listed here. Unknown fields are ignored.",
       "Text must fit: maxChars and maxLines are estimates, and text that does not fit is reported as an error to shorten.",
-      "Lists have fixed item counts (minItems–maxItems). Optional fields that are left out are removed from the slide.",
+      "Lists have fixed item counts (minItems–maxItems, or only the allowedCounts when given). Optional fields that are left out are removed from the slide.",
       "Use \"\\n\" in titles to break lines on purpose.",
       "A good deck opens with a cover, may use an agenda and a spotlight divider before each section, and closes with wknd-thank-you or wknd-questions.",
       "Write in the language of the brief. Component layouts (agenda, team, timeline) write an English intro when intro is left out, so set intro for decks in other languages.",
       "Leave out theme to keep each layout's own colors, which is the usual WKND look.",
     ],
     themes: DECK_THEMES.map((theme) => ({ id: theme.id, name: theme.name })),
+    shapes: LAYOUT_SHAPES,
     layouts,
   };
 }

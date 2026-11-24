@@ -2,7 +2,8 @@
 //
 //   dist-desktop/shell.cjs   the shell (electron/shell.ts), packaged inside the .app
 //   dist-desktop/bundle/     the updatable bundle: engine, MCP server, AI bridge,
-//                            playbook and the web app, with a signed manifest
+//                            wknd-deck CLI and its skill, playbook and the web
+//                            app, with a signed manifest
 //
 //   npx tsx scripts/build-desktop.ts                  everything
 //   npx tsx scripts/build-desktop.ts --skip-renderer  reuse the current out/
@@ -97,6 +98,15 @@ async function main() {
     outfile: join(bundleDir, "ai-bridge.mjs"),
     banner: esmBanner,
   });
+  // The CLI and skill of the "Claude Code · CLI" agent.
+  await build({
+    ...common,
+    entryPoints: [join(root, "scripts/wknd-deck.ts")],
+    format: "esm",
+    outfile: join(bundleDir, "wknd-deck.mjs"),
+    banner: esmBanner,
+  });
+  await cp(join(root, "skills/wknd-deck"), join(bundleDir, "skills/wknd-deck"), { recursive: true });
   await cp(join(root, "docs/agent-guide/playbook.md"), join(bundleDir, "playbook.md"));
   await cp(join(root, "out"), join(bundleDir, "web"), {
     recursive: true,

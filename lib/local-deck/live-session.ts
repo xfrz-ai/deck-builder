@@ -31,6 +31,17 @@ export interface SessionTransport {
   watch: (callbacks: { event: (event: DeckEvent) => void; status: (status: LiveConnectionStatus) => void }, signal: AbortSignal) => Promise<void>;
 }
 
+// What the editor shows while an agent operation runs; others read "Merevisi slide".
+const AGENT_ACTIVITY: Partial<Record<string, string>> = {
+  add: "Menambahkan slide",
+  finish: "Menyelesaikan pekerjaan",
+  start: "Memulai pekerjaan",
+  move: "Memindahkan slide",
+  duplicate: "Menduplikasi slide",
+  remove: "Menghapus slide",
+  settings: "Mengubah pengaturan deck",
+};
+
 // Owns synchronization independently of React render closures. Store replacement,
 // baseline and revision changes are published together, so remote data is not dirty.
 export class LiveDeckSession {
@@ -114,7 +125,7 @@ export class LiveDeckSession {
     if (this.state.deleted || event.deckId !== this.store.getState().presentation.id) return;
     if (event.type === "document.deleted") { this.markDeleted(); return; }
     if (event.type === "operation.started") {
-      if (event.source === "agent") this.record(event.operation === "add" ? "Menambahkan slide" : event.operation === "finish" ? "Menyelesaikan pekerjaan" : event.operation === "start" ? "Memulai pekerjaan" : "Merevisi slide");
+      if (event.source === "agent") this.record(AGENT_ACTIVITY[event.operation ?? ""] ?? "Merevisi slide");
       return;
     }
     if (event.type === "operation.failed") { if (event.source === "agent") this.record(`Aksi gagal: ${event.errorCode ?? "UNKNOWN"}`); return; }

@@ -23,6 +23,10 @@ import { WKND_IMAGE_FIELD_NOTES_LAYOUT } from "@/lib/layouts/wknd-image-field-no
 import { WKND_IMAGE_MATERIALS_LAYOUT } from "@/lib/layouts/wknd-image-materials-layout";
 import { WKND_IMAGE_MOODS_LAYOUT } from "@/lib/layouts/wknd-image-moods-layout";
 import { WKND_IMAGE_SPLIT_LAYOUT } from "@/lib/layouts/wknd-image-split-layout";
+import {
+  WKND_IMAGE_PHOTO_TEXT_LAYOUT,
+  WKND_IMAGE_TEXT_PHOTO_LAYOUT,
+} from "@/lib/layouts/wknd-image-text-photo-layout";
 import { WKND_IMAGE_TWO_STUDIES_LAYOUT } from "@/lib/layouts/wknd-image-two-studies-layout";
 import { WKND_MOCKUP_LAPTOP_CALLOUTS_LAYOUT } from "@/lib/layouts/wknd-mockup-laptop-callouts-layout";
 import { WKND_MOCKUP_LAPTOP_WEBSITE_LAYOUT } from "@/lib/layouts/wknd-mockup-laptop-website-layout";
@@ -37,6 +41,7 @@ import { WKND_TEAM_ORG_LAYOUT } from "@/lib/layouts/wknd-team-org-layout";
 import { WKND_TEAM_SQUADS_LAYOUT } from "@/lib/layouts/wknd-team-squads-layout";
 import { WKND_SOW_MODULES_LAYOUT } from "@/lib/layouts/wknd-sow-modules-layout";
 import { WKND_SOW_OVERVIEW_LAYOUT } from "@/lib/layouts/wknd-sow-overview-layout";
+import { WKND_STATS_LAYOUT } from "@/lib/layouts/wknd-stats-layout";
 import { WKND_TABLE_BUG_TRIAGE_LAYOUT } from "@/lib/layouts/wknd-table-bug-triage-layout";
 import { WKND_TABLE_PACKAGES_LAYOUT } from "@/lib/layouts/wknd-table-packages-layout";
 import { WKND_TABLE_SCOPE_LAYOUT } from "@/lib/layouts/wknd-table-scope-layout";
@@ -76,11 +81,14 @@ export const SLIDE_LAYOUTS: readonly SlideLayoutDefinition[] = [
   WKND_IMAGE_TWO_STUDIES_LAYOUT,
   WKND_IMAGE_APPROACH_LAYOUT,
   WKND_IMAGE_SPLIT_LAYOUT,
+  WKND_IMAGE_TEXT_PHOTO_LAYOUT,
+  WKND_IMAGE_PHOTO_TEXT_LAYOUT,
   WKND_BENTO_COLUMNS_LAYOUT,
   WKND_BENTO_GRID_LAYOUT,
   WKND_FULL_TEXT_LAYOUT,
   WKND_FULL_TEXT_PARAGRAPHS_LAYOUT,
   WKND_FULL_TEXT_STATEMENT_LAYOUT,
+  WKND_STATS_LAYOUT,
   WKND_MOCKUP_LAPTOP_LAYOUT,
   WKND_MOCKUP_LAPTOP_CALLOUTS_LAYOUT,
   WKND_MOCKUP_LAPTOP_WEBSITE_LAYOUT,

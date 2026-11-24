@@ -1,4 +1,5 @@
-// The local bridge (scripts/ai-bridge.mjs) that runs Claude Code headless.
+// The local bridge (scripts/ai-bridge.mjs) that runs the user's AI agent
+// (Claude Code or Codex) headless.
 export const AI_BRIDGE_URL =
   process.env.NEXT_PUBLIC_AI_BRIDGE_URL ?? "http://127.0.0.1:8787";
 

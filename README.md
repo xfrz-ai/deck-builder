@@ -109,12 +109,18 @@ In Claude Code, type `/deck` followed by your brief. Setup, Claude Desktop, live
 
 ### Ask AI
 
-The **Ask AI** button at the bottom left of the canvas edits the selected slide's Team, Agenda or Timeline content by chat, for example "Add a Data squad with 3 people" or "Move every phase one week later".
+The **Ask AI** button at the bottom left of the canvas opens a chat about the open deck.
 
 ```bash
 npm run ai-bridge   # Terminal 1
 npm run dev         # Terminal 2
 ```
+
+The switch at the top of the panel picks **Claude Code** or **CLI + skills**. It is the same setting as the agent card in Library → Create with AI, so it changes there too.
+
+**With CLI + skills** (Claude Code · CLI (beta)), and for a deck in the Library, the chat can change any slide: copy, layouts, new slides, order or theme, for example "Make the title of this slide sharper". Each message runs one turn of the same agent as Create with AI, through the `wknd-deck` CLI and its skill, and tells it which slide is on screen. Unsaved edits are saved first. Every change is saved to the deck at once and shows up on the canvas live; undo it by asking, since Ctrl+Z history resets on a live update. A slide edited by hand can only be rebuilt from a template, so the agent asks before it drops those edits.
+
+**With another agent**, or for a deck saved only in this browser, the chat edits the selected slide's Team, Agenda or Timeline content, for example "Add a Data squad with 3 people" or "Move every phase one week later":
 
 1. The browser sends the slide's content (text and structure, never photos) to the bridge at `http://127.0.0.1:8787`.
 2. The bridge ([scripts/ai-bridge.mjs](scripts/ai-bridge.mjs)) runs `claude -p` in an empty temp folder with tools disabled, so Claude can't read or change project files.
@@ -196,7 +202,7 @@ A deck spec is JSON that picks a layout for each slide and fills its content fie
 | [lib/deck-spec/source-document.ts](lib/deck-spec/source-document.ts) | Reads `.md` and `.pptx` files into text for Claude |
 | [lib/ai/deck-generation.ts](lib/ai/deck-generation.ts) | Drafts a spec with Claude, checks it and lets Claude fix problems |
 
-31 of the 40 layouts can be used in a spec. Image Split, SOW Modules and the seven device mockups can't, because their content is positioned by hand. To support another fixed layout, add an entry to `STATIC_LAYOUT_CONTENT` whose `element` values match the layout's element ids (without the `<layoutId>-` prefix).
+34 of the 46 layouts can be used in a spec. The other 12 can't yet: Image Split, the two SOW layouts, the two Text + Icon layouts and the seven device mockups. Each spec layout also lists its shapes, what it looks like, in [lib/deck-spec/layout-shapes.ts](lib/deck-spec/layout-shapes.ts); a test fails when one is missing. To support another fixed layout, add an entry to `STATIC_LAYOUT_CONTENT` whose `element` values match the layout's element ids (without the `<layoutId>-` prefix).
 
 **When you add or change a layout, update [DECK-GUIDE.md](DECK-GUIDE.md) sections 5 and 6.** The catalog updates itself, but the guide doesn't.
 

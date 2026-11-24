@@ -69,6 +69,8 @@ export async function start(context: EngineContext): Promise<EngineHandle> {
       script: join(context.bundleDir, "ai-bridge.mjs"),
       dataDir: context.dataDir,
       mcpBundle: join(context.bundleDir, "deck-mcp.mjs"),
+      cliBundle: join(context.bundleDir, "wknd-deck.mjs"),
+      skillDir: join(context.bundleDir, "skills", "wknd-deck"),
       playbook: join(context.bundleDir, "playbook.md"),
     }));
 

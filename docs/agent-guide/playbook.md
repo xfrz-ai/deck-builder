@@ -2,7 +2,7 @@
 
 How to plan, write and build a Weekend (WKND) deck with the user. Every agent (Codex, Claude CLI, Claude Desktop) gets this text from the `get_deck_playbook` tool or the `plan_deck` prompt of the deck_builder MCP server, so editing this file changes all of them. The file is read on every call, so an edit applies to the next deck without restarting anything.
 
-Layout ids, fields and character limits come from `list_layouts`. This playbook covers the conversation, the story and the copy.
+Layout ids, fields and character limits come from `list_layouts`. This playbook covers the conversation, the story (including which layout fits which content) and the copy.
 
 Sections 2 and 3 are also in `DECK-GUIDE.md` in the project root, the guide for agents without these tools. Keep both copies the same.
 
@@ -29,13 +29,14 @@ If the user gives a document, notes or a long description, read it and only ask 
 Propose the deck as a numbered list, one line per slide:
 
 ```
-1. [Message of the slide, one sentence] — wknd-cover-brand
-2. [Message] — wknd-agenda-chapters
-3. [Message] — wknd-full-text-statement
+1. [Message of the slide, one sentence] — <cover layout> (<its color>)
+2. [Message] — <layout>
+3. [Message] — <layout>
 ...
 ```
 
 - Write the **message** the slide must land, not its topic ("Checkout lambat membuat 3 dari 10 pembeli pergi", not "Analisis checkout").
+- Pick each layout from that slide's content, as described in [Choose layouts by content](#choose-layouts-by-content), and the cover with [Choose a cover](#choose-a-cover). Write the cover's color in the user's language, for example `(kuning)`, so the user can ask for another one.
 - Add one line underneath with the story arc and any assumptions or placeholders you will use.
 - Ask: "Storyline ini oke? Kalau oke, aku langsung tulis copy dan build." Then wait.
 
@@ -63,22 +64,92 @@ The user asks for changes per slide ("slide 4 judulnya kurang tajam"). Call `get
 
 Default arc for a proposal or pitch: **problem → impact → solution → proof → plan → next step.**
 
-| Part | What it answers | Typical layouts |
-|---|---|---|
-| Opening | Who and what is this for? | Cover, then `wknd-agenda-chapters` or `wknd-agenda-overview` |
-| Problem | What is going wrong, or what is the opportunity? | `wknd-full-text-statement`, `wknd-full-text-paragraphs`, `wknd-image-field-notes` |
-| Impact | Why does it matter now? | `wknd-bento-grid` (numbers in card titles), `wknd-full-text` |
-| Solution | What do we propose? | `wknd-bento-columns`, `wknd-image-approach`, `wknd-image-moods` |
-| Proof | Why believe us? | `wknd-image-two-studies`, `wknd-bento-grid` |
-| Plan | How, when and who? | `wknd-timeline-steps`, `wknd-timeline-road`, `wknd-timeline-roadmap`, `wknd-table-scope`, `wknd-team-org` |
-| Next step | What do we need from you? | `wknd-table-packages`, `wknd-questions`, `wknd-thank-you` |
+| Part | What it answers |
+|---|---|
+| Opening | Who and what is this for? |
+| Problem | What is going wrong, or what is the opportunity? |
+| Impact | Why does it matter now? |
+| Solution | What do we propose? |
+| Proof | Why believe us? |
+| Plan | How, when and who? |
+| Next step | What do we need from you? |
 
 Other deck types:
 
-- **Workshop:** cover, `wknd-agenda` (the schedule), content per session, `wknd-questions`.
-- **Project update:** cover, `wknd-agenda-overview`, `wknd-timeline-roadmap`, `wknd-bento-grid` for highlights, `wknd-table-bug-triage` or `wknd-table-scope`, `wknd-thank-you`.
-- **Case study:** cover, challenge (`wknd-full-text-statement`), approach (`wknd-image-approach`), work (`wknd-image-moods` or `wknd-image-materials`), results (`wknd-bento-grid`), `wknd-thank-you`.
-- **Investor pitch:** cover, problem (`wknd-full-text-statement`), solution (`wknd-bento-columns`), how it works (`wknd-image-approach`), traction (`wknd-bento-grid`, numbers in card titles), market (`wknd-full-text-paragraphs`), business model (`wknd-table-packages` for pricing tiers), team (`wknd-team-structure`), plan and use of funds (`wknd-timeline-roadmap`), the ask (`wknd-questions`, with the amount in a step), `wknd-thank-you`.
+- **Workshop:** cover, the schedule (`wknd-agenda`), content per session, Q&A.
+- **Project update:** cover, agenda, progress against the plan, highlights, open issues or bugs, closing.
+- **Case study:** cover, the challenge, the approach, the work, the results, closing.
+- **Investor pitch:** cover, problem, solution, how it works, traction, market, business model, team, plan and use of funds, the ask (with the amount), closing.
+
+### Choose layouts by content
+
+The same arc does not mean the same layouts. Choose each slide's layout from what its content actually is, using the options below. **The options are not in order of preference, and none of them is the default.** Don't reuse an opening or a sequence from an example or an earlier deck: the layouts follow from this brief. When two options fit the content equally well, take the one that contrasts with the slides next to it, such as a photo layout after text layouts.
+
+**Opening**
+
+- Cover: see [Choose a cover](#choose-a-cover).
+- Agenda, in decks of more than about 8 slides:
+  - a plain list of chapters, optionally with page numbers → `wknd-agenda-chapters`
+  - topics that each need a one-line explanation → `wknd-agenda-overview`
+  - a meeting or workshop with a date and session times → `wknd-agenda`
+
+**Problem or challenge**
+
+- one bold claim of two short lines, backed by two or three points → `wknd-full-text-statement`
+- an observation from research, interviews or a visit, shown with a photo → `wknd-image-field-notes`, or `wknd-image-text-photo` / `wknd-image-photo-text` when one photo and a few paragraphs tell it
+- background or context that needs a few paragraphs of prose → `wknd-full-text-paragraphs`
+- a claim, two or three points and a quote from the client or a user → `wknd-full-text`
+
+**Impact**
+
+- two to four numbers, such as results, market size or the cost of the problem → `wknd-stats`
+- four effects that need a sentence or two each → `wknd-bento-grid`
+- the cost of doing nothing in two or three points, with a quote if you have one → `wknd-full-text`
+- one bold claim on its own → `wknd-full-text-statement`, without columns
+
+**Solution or approach**
+
+- three services or pillars, each with detail and bullets → `wknd-bento-columns`
+- three short principles for how we will work → `wknd-image-approach`
+- four features or benefits, with a call to action → `wknd-bento-grid`
+- four creative directions, moods or concepts → `wknd-image-moods`
+- references, materials or visual inspiration → `wknd-image-materials`
+
+**Proof**
+
+- two case studies, or two options side by side → `wknd-image-two-studies`
+- one case or story told with a single photo → `wknd-image-text-photo` or `wknd-image-photo-text`
+- results as numbers → `wknd-stats`
+
+**Plan**
+
+- phases told as a journey toward a launch → `wknd-timeline-road`
+- phases where each one builds on the one before → `wknd-timeline-steps`
+- work spread over months or quarters → `wknd-timeline-roadmap`
+- who leads and who supports in each phase → `wknd-table-scope`
+- open issues or bugs by severity → `wknd-table-bug-triage`
+
+**Team**
+
+- teams of equals → `wknd-team-structure`, or `wknd-team-squads` when the slide should show faces
+- one leader, with the teams in focus → `wknd-team-org`
+- one leader, with the team leads in focus → `wknd-team-tree`
+
+**Next step**
+
+- packages or prices to choose from → `wknd-table-packages`
+- three next steps for the client, such as the ask in a pitch → `wknd-questions`
+- contact details → `wknd-thank-you`
+
+**Section dividers:** `wknd-agenda-spotlight` (shows where we are in the agenda) or `wknd-image-chapter` (a photo and a short text). See the rules below.
+
+### Choose a cover
+
+All four covers hold the client or project name. Choose in this order:
+
+1. **Length of the name.** Aim for about 14 characters on `wknd-cover-brand`, 13 on `wknd-cover-star` and 12 on `wknd-cover-arches`, all on one line. A longer name, or one that reads better on two lines, goes on `wknd-cover-d`, for example `"Kopi\nNusantara"`.
+2. **The client's brand color**, if you know it and it is close to one of the four: blue `wknd-cover-brand`, black `wknd-cover-star`, yellow `wknd-cover-arches`, orange `wknd-cover-d`.
+3. **Otherwise, the tone of the deck:** blue for calm and trustworthy, black for premium and bold, yellow for warm and friendly, orange for energetic.
 
 ### Rules
 
@@ -89,7 +160,9 @@ Other deck types:
 - **Section dividers** (`wknd-agenda-spotlight` or `wknd-image-chapter`) only in decks over about 10 slides, one before each section. With more than three sections, alternate the two.
 - **Vary layouts:** never the same layout on two slides in a row, and any layout at most three times.
 - **Fixed item counts:** when content doesn't match a layout's count, merge items, split them over two slides or choose another layout. Never pad with filler items.
-- **No layout for** charts, big-number slides, quote-only slides, logo walls or testimonials. Put metrics in `wknd-bento-grid` card titles.
+- **Big numbers** go on `wknd-stats`, two to four per slide. A number without a real source is a placeholder such as `[X]%`.
+- **No layout for** charts, quote-only slides, logo walls or testimonials.
+- **When the user asks for a look** ("two columns", "text and a photo", "big numbers"), take a layout with that shape. If none has it, say which layout comes closest instead of silently using another look.
 - **Length:** about 10 slides for a pitch and 12–20 for a full proposal, unless the user says otherwise. The maximum is 60.
 
 ---

@@ -49,6 +49,35 @@ export function estimateTextCapacity(element: TextElement, measure: DeckTextMeas
   return { lines, characters: Math.max(1, Math.floor(element.width / averageWidth) * lines) };
 }
 
+// Spreads the first `used` of a list's `max` items evenly over the width the
+// full set covers, keeping the gap between items. An item's box is the span
+// of the elements whose id starts with its prefix.
+function spreadItems(elements: Map<string, SlideElement>, max: number, used: number, itemPrefix: (index: number) => string) {
+  const items = Array.from({ length: max }, (_, index) => {
+    const members = [...elements.values()].filter((element) => element.id.startsWith(itemPrefix(index)));
+    const left = Math.min(...members.map((element) => element.x));
+    const right = Math.max(...members.map((element) => element.x + element.width));
+    return { members, left, width: right - left };
+  });
+  if (max < 2 || items.some((item) => !item.members.length)) return;
+  const gap = items[1].left - (items[0].left + items[0].width);
+  const spanLeft = items[0].left;
+  const spanRight = items[max - 1].left + items[max - 1].width;
+  const width = (spanRight - spanLeft - gap * (used - 1)) / used;
+  for (let index = 0; index < used; index++) {
+    const item = items[index];
+    const left = spanLeft + index * (width + gap);
+    for (const element of item.members) {
+      const stretch = Math.abs(element.width - item.width) < 1;
+      elements.set(element.id, {
+        ...element,
+        x: Math.round(left + (element.x - item.left)),
+        ...(stretch ? { width: Math.round(width) } : {}),
+      } as SlideElement);
+    }
+  }
+}
+
 // Fills a fixed layout's template elements, which still carry their template
 // ids ("<layoutId>-<element>"), from `content`.
 function applyStaticFields(
@@ -111,9 +140,14 @@ function applyStaticFields(
     }
     if (!componentTextFits(element, context.measure)) {
       const capacity = estimateTextCapacity(element, context.measure);
+      const lines = text.split("\n").length;
+      const fit = `${capacity.lines} line${capacity.lines === 1 ? "" : "s"}`;
       context.errors.push({
         path: fieldPath,
-        message: `Too long for this layout: about ${capacity.characters} characters fit on ${capacity.lines} line${capacity.lines === 1 ? "" : "s"} (got ${text.length}). Shorten it.`,
+        // A line break of its own can be what overflows, not the length.
+        message: lines > capacity.lines
+          ? `Too many lines for this layout: only ${fit} fit${capacity.lines === 1 ? "s" : ""}, and the text has ${lines}. Remove the "\\n" line breaks or shorten it.`
+          : `Too long for this layout: about ${capacity.characters} characters fit on ${fit} (got ${text.length}). Shorten it.`,
       });
     }
   };
@@ -142,20 +176,26 @@ function applyStaticFields(
     if (field.type === "text") applyText(field, field.element, value, fieldPath);
     else if (field.type === "image") applyImage(field, field.element, value, fieldPath);
     else {
-      if (!Array.isArray(value) || value.length < field.min || value.length > field.max) {
-        const count = field.min === field.max ? `exactly ${field.min}` : `${field.min}–${field.max}`;
-        context.errors.push({ path: fieldPath, message: `Use an array of ${count} items${Array.isArray(value) ? `; got ${value.length}` : ""}.` });
+      // A list that may be empty may also be left out.
+      const list = value === undefined && field.min === 0 ? [] : value;
+      if (!Array.isArray(list) || list.length < field.min || list.length > field.max || (field.counts && !field.counts.includes(list.length))) {
+        const count = field.counts ? field.counts.join(", ").replace(/, (\d+)$/, " or $1")
+          : field.min === field.max ? `exactly ${field.min}` : `${field.min}–${field.max}`;
+        context.errors.push({ path: fieldPath, message: `Use an array of ${count} items${Array.isArray(list) ? `; got ${list.length}` : ""}.` });
         continue;
       }
+      const itemPrefix = (index: number) => fullId(field.itemPrefix.replaceAll("{n}", field.keys?.[index] ?? String(index + 1)));
+      // Before the text is filled, so fit checks see the final widths.
+      if (field.spread && list.length > 0 && list.length < field.max) spreadItems(elements, field.max, list.length, itemPrefix);
       for (let index = 0; index < field.max; index++) {
         const itemKey = field.keys?.[index] ?? String(index + 1);
         const withKey = (suffix: string) => suffix.replaceAll("{n}", itemKey);
-        if (index >= value.length) {
-          const prefix = fullId(withKey(field.itemPrefix));
+        if (index >= list.length) {
+          const prefix = itemPrefix(index);
           for (const id of elements.keys()) if (id.startsWith(prefix)) removed.add(id);
           continue;
         }
-        const item = value[index];
+        const item = list[index];
         const itemPath = `${fieldPath}[${index}]`;
         if (!isRecord(item)) {
           context.errors.push({ path: itemPath, message: `Each item is an object with: ${Object.keys(field.fields).join(", ")}.` });

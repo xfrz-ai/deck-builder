@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 import { buildDeckFromSpec, getKnownLayoutIds, MAX_DECK_SLIDES } from "@/lib/deck-spec/build-deck";
 import { getDeckSpecCatalog } from "@/lib/deck-spec/layout-catalog";
+import { isLayoutShape, LAYOUT_SHAPES, type LayoutShape } from "@/lib/deck-spec/layout-shapes";
 import type { DeckSpec } from "@/lib/deck-spec/deck-spec";
 import { normalizeAgendaPresentation } from "@/lib/agenda/agenda-ownership";
 import { normalizeTeamPresentation } from "@/lib/team/team-ownership";
@@ -11,10 +12,12 @@ import { isPresentation } from "@/lib/presentation/validation";
 import { LAYOUT_GRID } from "@/lib/layouts/layout-grid";
 import { WKND_COLORS } from "@/lib/layouts/layout-elements";
 import { DECK_THEMES, WKND_3D_DIR } from "@/lib/themes/deck-themes";
+import { applyThemeToSlide } from "@/lib/themes/apply-theme";
+import { duplicateSlideWithNewIds } from "@/lib/slides/slide-utils";
 import type { Presentation } from "@/types/presentation";
 import { DeckError, snapshot, type DeckDocument } from "./deck-document";
 import { FileRepository } from "./file-repository";
-import { addSchema, createSchema, saveSchema, updateSchema, startWorkSchema, finishWorkSchema, deleteSchema } from "./schemas";
+import { addSchema, createSchema, saveSchema, updateSchema, startWorkSchema, finishWorkSchema, deleteSchema, deckSpecSchema, slideSpecSchema, slideTargetSchema, moveSlideSchema, deckSettingsSchema, layoutUsageSchema } from "./schemas";
 import { WORK_IDLE_MS, type AgentWork } from "./work-types";
 import { DeckEvents } from "./events";
 import type { EventInput } from "./event-types";
@@ -55,14 +58,28 @@ function isLocalImage(src: string) {
   } catch { return false; }
 }
 
+type MutationOperation = "add" | "update" | "save" | "start" | "finish" | "move" | "duplicate" | "remove" | "settings";
+// Agent edits that need the run owner while a live run is active.
+const AGENT_EDITS = new Set<MutationOperation>(["add", "update", "move", "duplicate", "remove", "settings"]);
+const isRecord = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === "object" && !Array.isArray(value);
+
+export interface SpecCheck {
+  valid: boolean;
+  kind: "deck" | "slide";
+  slideCount: number;
+  errors: { path: string; message: string }[];
+  warnings: { path: string; message: string }[];
+}
+
 export class DeckService {
   readonly events = new DeckEvents();
   constructor(readonly repository: FileRepository) {}
 
-  layouts(category?: string, layoutId?: string) {
+  layouts(category?: string, layoutId?: string, shape?: string) {
     const catalog = getDeckSpecCatalog();
-    const layouts = catalog.layouts.filter(item => (!category || item.category === category) && (!layoutId || item.id === layoutId));
-    if (layoutId && !layouts.length) throw new DeckError("UNSUPPORTED_LAYOUT", `Layout '${layoutId}' is not supported by DeckSpec. Use list_layouts for the 31 supported layouts.`);
+    if (shape && !isLayoutShape(shape)) throw new DeckError("UNKNOWN_SHAPE", `Unknown shape '${shape}'. Shapes: ${Object.keys(LAYOUT_SHAPES).join(", ")}.`);
+    const layouts = catalog.layouts.filter(item => (!category || item.category === category) && (!layoutId || item.id === layoutId) && (!shape || item.shapes.includes(shape as LayoutShape)));
+    if (layoutId && !layouts.length) throw new DeckError("UNSUPPORTED_LAYOUT", `Layout '${layoutId}' is not supported by DeckSpec. Use list_layouts for the ${catalog.layouts.length} supported layouts.`);
     return { ...catalog, layouts, maxSlides: MAX_DECK_SLIDES };
   }
   brand() {
@@ -114,7 +131,7 @@ export class DeckService {
   private build(spec: DeckSpec) {
     const supported = new Set(getKnownLayoutIds());
     spec.slides.forEach((slide, i) => {
-      if (!supported.has(slide.layout)) throw new DeckError("UNSUPPORTED_LAYOUT", `Layout '${slide.layout}' is not supported by DeckSpec. Use list_layouts for the 31 supported layouts.`, 400, [{ path: `slides[${i}].layout`, message: "Unsupported layout." }]);
+      if (!supported.has(slide.layout)) throw new DeckError("UNSUPPORTED_LAYOUT", `Layout '${slide.layout}' is not supported by DeckSpec. Use list_layouts for the ${supported.size} supported layouts.`, 400, [{ path: `slides[${i}].layout`, message: "Unsupported layout." }]);
     });
     // Validate sources after building too, so all generated/hidden sources are checked.
     const result = buildDeckFromSpec(spec);
@@ -167,7 +184,7 @@ export class DeckService {
     return true;
   }
 
-  private mutate(deckId: string, expectedRevision: number, requestId: string, operation: "add" | "update" | "save" | "start" | "finish", payload: unknown, apply: (doc: DeckDocument) => void, owner?: { runId?: string; ownerToken?: string }) {
+  private mutate(deckId: string, expectedRevision: number, requestId: string, operation: MutationOperation, payload: unknown, apply: (doc: DeckDocument) => void, owner?: { runId?: string; ownerToken?: string }) {
     return this.repository.transaction(async () => {
       const document = await this.repository.read(deckId);
       const fingerprint = hash({ operation, payload });
@@ -182,7 +199,7 @@ export class DeckService {
       this.events.publish(activity);
       try {
       if (document.revision !== expectedRevision) throw new DeckError("REVISION_CONFLICT", "The deck changed. Keep your draft, get the latest deck, and reconcile before saving again.", 409, [], document.revision);
-      if (operation === "finish" || ((operation === "add" || operation === "update") && (document.agentWork?.status === "working" || owner?.runId || owner?.ownerToken))) this.requireOwner(document, owner);
+      if (operation === "finish" || (AGENT_EDITS.has(operation) && (document.agentWork?.status === "working" || owner?.runId || owner?.ownerToken))) this.requireOwner(document, owner);
       const previous = new Map(document.presentation.slides.map(slide => [slide.id, hash(slide)]));
       document.createdAt ??= document.updatedAt;
       apply(document);
@@ -270,5 +287,118 @@ export class DeckService {
       document.sources = sources;
       document.presentation = presentation;
     });
+  }
+
+  // Validates a deck spec, or one slide spec, exactly as create and add would,
+  // without saving anything. Reports every problem at once.
+  check(input: unknown): SpecCheck {
+    const kind = isRecord(input) && Array.isArray(input.slides) ? "deck" : "slide";
+    const parsed = kind === "deck" ? deckSpecSchema.safeParse(input) : slideSpecSchema.safeParse(input);
+    if (!parsed.success) {
+      return { valid: false, kind, slideCount: 0, warnings: [], errors: parsed.error.issues.map(issue => ({ path: issue.path.join("."), message: issue.message })) };
+    }
+    const spec = (kind === "deck" ? parsed.data : { slides: [parsed.data] }) as DeckSpec;
+    const result = buildDeckFromSpec(spec);
+    const errors = [...result.errors];
+    if (!errors.length) {
+      try { validatePresentation(normalize(result.presentation)); }
+      catch (error) { errors.push({ path: "", message: error instanceof Error ? error.message : "The built deck is invalid." }); }
+    }
+    // A single slide is reported without the deck wrapper around its paths.
+    const unwrap = (issue: { path: string; message: string }) => kind === "slide" ? { ...issue, path: issue.path.replace(/^slides\[0\]\.?/, "") } : issue;
+    return { valid: !errors.length, kind, slideCount: spec.slides.length, errors: errors.map(unwrap), warnings: result.warnings.map(unwrap) };
+  }
+
+  // How often each layout appears in the most recently changed decks, so an
+  // agent can prefer layouts it has not used lately.
+  async layoutUsage(input: z.input<typeof layoutUsageSchema> = {}) {
+    const args = layoutUsageSchema.parse(input);
+    const read = await Promise.allSettled((await this.repository.ids()).map(id => this.repository.read(id)));
+    const documents = read.flatMap(result => result.status === "fulfilled" ? [result.value] : [])
+      .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))
+      .slice(0, args.decks ?? 10);
+    const usage = new Map<string, { decks: number; slides: number }>();
+    for (const document of documents) {
+      const layouts = document.presentation.slides.flatMap(slide => Object.hasOwn(document.sources, slide.id) ? [document.sources[slide.id].spec.layout] : []);
+      for (const layout of layouts) {
+        const entry = usage.get(layout) ?? { decks: 0, slides: 0 };
+        entry.slides++;
+        usage.set(layout, entry);
+      }
+      for (const layout of new Set(layouts)) usage.get(layout)!.decks++;
+    }
+    return {
+      decks: documents.length,
+      layouts: [...usage].map(([layout, counts]) => ({ layout, ...counts })).sort((a, b) => b.decks - a.decks || b.slides - a.slides || a.layout.localeCompare(b.layout)),
+      unused: getDeckSpecCatalog().layouts.map(layout => layout.id).filter(id => !usage.has(id)),
+    };
+  }
+
+  async moveSlide(input: z.input<typeof moveSlideSchema>) {
+    const args = moveSlideSchema.parse(input);
+    return this.mutate(args.deckId, args.expectedRevision, args.requestId, "move", args, document => {
+      const slides = document.presentation.slides;
+      const from = slides.findIndex(slide => slide.id === args.slideId);
+      if (from < 0) throw new DeckError("SLIDE_NOT_FOUND", "Slide not found.", 404);
+      if (args.afterSlideId === args.slideId) throw new DeckError("INVALID_MOVE", "A slide cannot move after itself.");
+      const [slide] = slides.splice(from, 1);
+      const after = args.afterSlideId ? slides.findIndex(item => item.id === args.afterSlideId) : -1;
+      if (args.afterSlideId && after < 0) throw new DeckError("SLIDE_NOT_FOUND", "The slide to move after was not found.", 404);
+      slides.splice(after + 1, 0, slide);
+    }, args);
+  }
+
+  // The copy lands right after the original and keeps its source spec, so it
+  // can be revised like the original.
+  async duplicateSlide(input: z.input<typeof slideTargetSchema>) {
+    const args = slideTargetSchema.parse(input);
+    return this.mutate(args.deckId, args.expectedRevision, args.requestId, "duplicate", args, document => {
+      const slides = document.presentation.slides;
+      if (slides.length >= MAX_DECK_SLIDES) throw new DeckError("SLIDE_LIMIT", "A local deck holds at most 60 slides.");
+      const index = slides.findIndex(slide => slide.id === args.slideId);
+      if (index < 0) throw new DeckError("SLIDE_NOT_FOUND", "Slide not found.", 404);
+      const original = slides[index];
+      const copy = duplicateSlideWithNewIds(original);
+      slides.splice(index + 1, 0, copy);
+      const source = Object.hasOwn(document.sources, original.id) ? document.sources[original.id] : undefined;
+      if (source) document.sources[copy.id] = { spec: source.spec, builtHash: hash(copy), stale: source.stale || source.builtHash !== hash(original) };
+    }, args);
+  }
+
+  async removeSlide(input: z.input<typeof slideTargetSchema>) {
+    const args = slideTargetSchema.parse(input);
+    return this.mutate(args.deckId, args.expectedRevision, args.requestId, "remove", args, document => {
+      const slides = document.presentation.slides;
+      const index = slides.findIndex(slide => slide.id === args.slideId);
+      if (index < 0) throw new DeckError("SLIDE_NOT_FOUND", "Slide not found.", 404);
+      if (slides.length === 1) throw new DeckError("LAST_SLIDE", "A deck needs at least one slide.");
+      slides.splice(index, 1);
+      delete document.sources[args.slideId];
+    }, args);
+  }
+
+  // Title, theme and footer for the whole deck. Slides still matching their
+  // source spec are rebuilt with the new defaults, so they stay revisable.
+  // Manually edited slides take a new theme the way the editor applies it,
+  // and keep their footer text.
+  async updateSettings(input: z.input<typeof deckSettingsSchema>) {
+    const args = deckSettingsSchema.parse(input);
+    return this.mutate(args.deckId, args.expectedRevision, args.requestId, "settings", args, document => {
+      if (args.title !== undefined) document.presentation.title = args.title;
+      if (args.theme === undefined && args.footer === undefined) return;
+      const theme = args.theme === undefined ? document.defaults.theme : args.theme === "none" ? undefined : args.theme;
+      const footer = args.footer === undefined ? document.defaults.footer : { ...document.defaults.footer, ...args.footer };
+      document.defaults = { ...(theme ? { theme } : {}), ...(footer ? { footer } : {}) };
+      document.presentation.slides = document.presentation.slides.map(slide => {
+        const source = Object.hasOwn(document.sources, slide.id) ? document.sources[slide.id] : undefined;
+        if (source && !source.stale && source.builtHash === hash(slide)) {
+          const built = this.build({ ...document.defaults, slides: [source.spec] });
+          const rebuilt = { ...built.presentation.slides[0], id: slide.id };
+          document.sources[slide.id] = { spec: source.spec, builtHash: hash(rebuilt), stale: false };
+          return rebuilt;
+        }
+        return args.theme && args.theme !== "none" ? applyThemeToSlide(slide, args.theme) : slide;
+      });
+    }, args);
   }
 }

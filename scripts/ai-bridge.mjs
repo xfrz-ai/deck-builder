@@ -1,31 +1,26 @@
 #!/usr/bin/env node
-// Local-only bridge between the deck editor's AI chat and Claude Code.
-// It runs `claude -p` (headless) with your own Claude Code login, so no API
-// key is needed. Listens on 127.0.0.1 only; never deploy this.
+// Local-only bridge between the deck editor's AI features and the user's own
+// AI agent: Claude Code or Codex, whichever is turned on (scripts/agents.mjs).
+// The agent runs headless with its own login, so no API key is needed.
+// Listens on 127.0.0.1 only; never deploy this.
 // The Library's "Create with AI" chat lives in ./deck-agent-chat.mjs.
 //
 //   npm run ai-bridge
 //
-// Optional env: AI_BRIDGE_PORT (default 8787), AI_BRIDGE_MODEL (e.g. "opus").
+// Optional env: AI_BRIDGE_PORT (default 8787), AI_BRIDGE_MODEL (Claude Code
+// model, e.g. "opus").
 
-import { spawn } from "node:child_process";
-import { mkdtempSync } from "node:fs";
 import { createServer } from "node:http";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 
-import { claudeEnv, handleDeckAgentRequest } from "./deck-agent-chat.mjs";
+import { runAgentOnce } from "./agents.mjs";
+import { handleDeckAgentRequest } from "./deck-agent-chat.mjs";
 
 const PORT = Number(process.env.AI_BRIDGE_PORT ?? 8787);
-const MODEL = process.env.AI_BRIDGE_MODEL;
 const TIMEOUT_MS = 180_000;
 // A whole deck is a much longer answer than one slide.
 const DECK_TIMEOUT_MS = 600_000;
 const MAX_BODY_BYTES = 2_000_000;
 const ALLOWED_ORIGIN = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
-
-// Claude runs in an empty folder so it never sees or touches this project.
-const WORK_DIR = mkdtempSync(join(tmpdir(), "deck-ai-"));
 
 const SHARED_RULES = `The layout is drawn by the editor from this data, so you only change text, structure and the listed fields.
 
@@ -151,57 +146,8 @@ function buildPrompt({ instruction, history, data, previousAttempt, errors }) {
 function extractJson(text) {
   const start = text.indexOf("{");
   const end = text.lastIndexOf("}");
-  if (start === -1 || end <= start) throw new Error("Claude did not return JSON.");
+  if (start === -1 || end <= start) throw new Error("The AI did not return JSON.");
   return JSON.parse(text.slice(start, end + 1));
-}
-
-function runClaude(systemPrompt, prompt, timeoutMs = TIMEOUT_MS) {
-  const args = [
-    "-p",
-    "--output-format", "json",
-    "--tools", "",
-    "--strict-mcp-config",
-    "--system-prompt", systemPrompt,
-  ];
-  if (MODEL) args.push("--model", MODEL);
-
-  return new Promise((resolve, reject) => {
-    const child = spawn("claude", args, { cwd: WORK_DIR, env: claudeEnv(), stdio: ["pipe", "pipe", "pipe"] });
-    let stdout = "";
-    let stderr = "";
-    const timer = setTimeout(() => {
-      child.kill("SIGTERM");
-      reject(new Error("Claude took too long to answer."));
-    }, timeoutMs);
-
-    child.stdout.on("data", (chunk) => { stdout += chunk; });
-    child.stderr.on("data", (chunk) => { stderr += chunk; });
-    child.on("error", (error) => {
-      clearTimeout(timer);
-      reject(error.code === "ENOENT"
-        ? new Error("`claude` command not found. Install Claude Code and log in first.")
-        : error);
-    });
-    child.on("close", (code) => {
-      clearTimeout(timer);
-      if (code !== 0) {
-        reject(new Error(`claude exited with code ${code}: ${(stderr || stdout).trim().slice(0, 500)}`));
-        return;
-      }
-      try {
-        const envelope = JSON.parse(stdout);
-        if (envelope.is_error) throw new Error(envelope.result || "Claude returned an error.");
-        if (typeof envelope.total_cost_usd === "number") {
-          console.log(`  done in ${Math.round((envelope.duration_ms ?? 0) / 100) / 10}s`);
-        }
-        resolve(String(envelope.result ?? ""));
-      } catch (error) {
-        reject(error);
-      }
-    });
-
-    child.stdin.end(prompt);
-  });
 }
 
 function readBody(request) {
@@ -269,7 +215,7 @@ const server = createServer(async (request, response) => {
       console.log(isFix
         ? `→ [deck] fixing ${payload.errors.length} problem(s)`
         : `→ [deck] ${payload.mode ?? "restyle"} ${payload.source.name} (${payload.source.text.length} chars)`);
-      const result = extractJson(await runClaude(DECK_PROMPT, buildDeckPrompt(payload), DECK_TIMEOUT_MS));
+      const result = extractJson(await runAgentOnce(DECK_PROMPT, buildDeckPrompt(payload), DECK_TIMEOUT_MS));
       send(response, 200, {
         notes: Array.isArray(result.notes) ? result.notes.filter((note) => typeof note === "string") : [],
         spec: result.spec ?? null,
@@ -295,7 +241,7 @@ const server = createServer(async (request, response) => {
       return;
     }
     console.log(`→ [${payload.kind}] ${payload.instruction.slice(0, 80)}${payload.errors ? " (retry)" : ""}`);
-    const result = extractJson(await runClaude(systemPrompt, buildPrompt(payload)));
+    const result = extractJson(await runAgentOnce(systemPrompt, buildPrompt(payload), TIMEOUT_MS));
     send(response, 200, {
       reply: typeof result.reply === "string" ? result.reply : "",
       data: result.data ?? null,
@@ -307,5 +253,5 @@ const server = createServer(async (request, response) => {
 });
 
 server.listen(PORT, "127.0.0.1", () => {
-  console.log(`AI bridge ready on http://127.0.0.1:${PORT} (Claude Code headless)`);
+  console.log(`AI bridge ready on http://127.0.0.1:${PORT} (Claude Code or Codex, headless)`);
 });
